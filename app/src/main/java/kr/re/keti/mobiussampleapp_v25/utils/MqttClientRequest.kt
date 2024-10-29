@@ -1,4 +1,4 @@
-package kr.re.keti.mobiussampleapp_v25
+package kr.re.keti.mobiussampleapp_v25.utils
 
 /**
  * Created by araha on 2016-09-13.

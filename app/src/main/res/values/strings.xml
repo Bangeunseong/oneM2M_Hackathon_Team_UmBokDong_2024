@@ -11,4 +11,6 @@
     <string name="mobius_address">192.168.0.135</string>
     <string name="addr_unset">Disconnect</string>
     <string name="addr_set">Connect</string>
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="hello_blank_fragment">Hello blank fragment</string>
 </resources>

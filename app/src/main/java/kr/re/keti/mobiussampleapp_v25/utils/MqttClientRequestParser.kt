@@ -1,4 +1,4 @@
-package kr.re.keti.mobiussampleapp_v25
+package kr.re.keti.mobiussampleapp_v25.utils
 
 import org.json.JSONObject
 
