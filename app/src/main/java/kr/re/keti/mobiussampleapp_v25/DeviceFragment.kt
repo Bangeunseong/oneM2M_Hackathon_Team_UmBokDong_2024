@@ -2,13 +2,14 @@ package kr.re.keti.mobiussampleapp_v25
 
 import android.graphics.Rect
 import android.os.Bundle
-import android.support.design.widget.TabLayout
-import android.support.v4.app.Fragment
-import android.support.v7.widget.GridLayoutManager
-import android.support.v7.widget.RecyclerView
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.constraintlayout.widget.ConstraintLayout
+import androidx.fragment.app.Fragment
+import androidx.recyclerview.widget.GridLayoutManager
+import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.tabs.TabLayout
 import kr.re.keti.mobiussampleapp_v25.databinding.FragmentDevicesBinding
 import kr.re.keti.mobiussampleapp_v25.databinding.ItemRecyclerDeviceBinding
 
@@ -35,9 +36,9 @@ class DeviceFragment : Fragment() {
         }
     }
     // Inner Class For Setting Adapter in Device Recycler View
-    internal inner class DeviceAdapter : RecyclerView.Adapter<DeviceAdapter.ViewHolder>() {
-        override fun onCreateViewHolder(parent: ViewGroup?, viewType: Int): ViewHolder {
-            return ViewHolder(ItemRecyclerDeviceBinding.inflate(LayoutInflater.from(parent!!.context), parent, false))
+    inner class DeviceAdapter : RecyclerView.Adapter<DeviceAdapter.ViewHolder>() {
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
+            return ViewHolder(ItemRecyclerDeviceBinding.inflate(LayoutInflater.from(parent.context), parent, false))
         }
 
         override fun onBindViewHolder(holder: ViewHolder, position: Int) {
@@ -78,7 +79,7 @@ class DeviceFragment : Fragment() {
     }
 
     // onViewCreated -> Method Declaration
-    override fun onViewCreated(view: View?, savedInstanceState: Bundle?) {
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
         binding.deviceText.text = PAGE_NAME

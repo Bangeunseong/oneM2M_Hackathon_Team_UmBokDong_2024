@@ -1,13 +1,16 @@
 package kr.re.keti.mobiussampleapp_v25
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
-import android.support.v7.app.AppCompatActivity
 import android.util.Log
 import android.view.View
 import android.view.inputmethod.InputMethodManager
 import android.widget.CompoundButton
 import android.widget.ToggleButton
+import androidx.appcompat.app.AppCompatActivity
 import kr.re.keti.mobiussampleapp_v25.data_objects.AE
 import kr.re.keti.mobiussampleapp_v25.data_objects.ApplicationEntityObject
 import kr.re.keti.mobiussampleapp_v25.data_objects.CSEBase
@@ -17,7 +20,7 @@ import kr.re.keti.mobiussampleapp_v25.databinding.ActivityMainBinding
 import kr.re.keti.mobiussampleapp_v25.utils.MqttClientRequest
 import kr.re.keti.mobiussampleapp_v25.utils.MqttClientRequestParser
 import kr.re.keti.mobiussampleapp_v25.utils.ParseElementXml
-import org.eclipse.paho.android.service.MqttAndroidClient
+import info.mqtt.android.service.MqttAndroidClient
 import org.eclipse.paho.client.mqttv3.IMqttActionListener
 import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken
 import org.eclipse.paho.client.mqttv3.IMqttToken
@@ -68,6 +71,9 @@ class MainActivity : AppCompatActivity(), View.OnClickListener, CompoundButton.O
 
         // Create AE and Get AEID
         // GetAEInfo();
+
+        // Check Permission
+
     }
 
     override fun onDestroy() {
@@ -158,7 +164,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener, CompoundButton.O
             }
         } else {
             /* MQTT unSubscribe or Client Close */
-            mqttClient!!.setCallback(null)
+            //mqttClient!!.setCallback(null)
             mqttClient!!.close()
             mqttClient = null
         }
@@ -314,6 +320,17 @@ class MainActivity : AppCompatActivity(), View.OnClickListener, CompoundButton.O
 
     public override fun onStart() {
         super.onStart()
+
+        if(checkSelfPermission(FILE_INTEGRITY_SERVICE) == PackageManager.PERMISSION_DENIED ||
+            checkSelfPermission(NOTIFICATION_SERVICE) == PackageManager.PERMISSION_DENIED){
+            if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU){
+                requestPermissions(arrayOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION,
+                    Manifest.permission.SCHEDULE_EXACT_ALARM,
+                    Manifest.permission.USE_EXACT_ALARM),101)
+            }
+        }
     }
 
     public override fun onStop() {
