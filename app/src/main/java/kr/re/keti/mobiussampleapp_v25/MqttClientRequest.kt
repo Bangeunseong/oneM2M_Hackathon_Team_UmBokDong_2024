@@ -1,16 +1,17 @@
-package kr.re.keti.mobiussampleapp_v25;
+package kr.re.keti.mobiussampleapp_v25
 
 /**
  * Created by araha on 2016-09-13.
  */
-public class MqttClientRequest {
+object MqttClientRequest {
+    fun notificationResponse(response: String?): String {
+        val responseMessage =
+            """
+             {"rsc":"2000",
+             "rqi":"$response",
+             "pc":""}
+             """.trimIndent()
 
-    public static String notificationResponse(String response) {
-        String responseMessage =
-                "{\"rsc\":\"2000\",\n" +
-                 "\"rqi\":\""+ response + "\",\n" +
-                 "\"pc\":\"\"}";
-
-        return responseMessage;
+        return responseMessage
     }
 }

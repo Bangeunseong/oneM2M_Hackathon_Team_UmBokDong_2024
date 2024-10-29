@@ -1,42 +1,33 @@
-package kr.re.keti.mobiussampleapp_v25;
+package kr.re.keti.mobiussampleapp_v25
 
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-import org.w3c.dom.Node;
-import org.w3c.dom.NodeList;
-
-import java.io.ByteArrayInputStream;
-import java.io.InputStream;
-
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
-
+import org.w3c.dom.Element
+import java.io.ByteArrayInputStream
+import java.io.InputStream
+import javax.xml.parsers.DocumentBuilderFactory
 
 /**
  * Created by araha on 2016-09-20.
  */
-public class ParseElementXml {
-    private String getstr="";
+class ParseElementXml {
+    private var getstr = ""
 
-    public String GetElementXml(String xmlParam, String tagName) {
-
+    fun GetElementXml(xmlParam: String, tagName: String?): String {
         try {
-            DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-            DocumentBuilder docBuilder = factory.newDocumentBuilder();
-            InputStream is = new ByteArrayInputStream(xmlParam.getBytes());
-            Document doc = docBuilder.parse(is);
-            NodeList resultNodes = doc.getElementsByTagName(tagName);
+            val factory = DocumentBuilderFactory.newInstance()
+            val docBuilder = factory.newDocumentBuilder()
+            val `is`: InputStream = ByteArrayInputStream(xmlParam.toByteArray())
+            val doc = docBuilder.parse(`is`)
+            val resultNodes = doc.getElementsByTagName(tagName)
 
-            if (resultNodes.getLength() > 0 && resultNodes.item(0).getChildNodes().getLength() > 0) {
-                Element subElement = (Element) resultNodes.item(0);
-                Node aeIdNode = subElement.getChildNodes().item(0);
-                getstr = aeIdNode.getNodeValue();
+            if (resultNodes.length > 0 && resultNodes.item(0).childNodes.length > 0) {
+                val subElement = resultNodes.item(0) as Element
+                val aeIdNode = subElement.childNodes.item(0)
+                getstr = aeIdNode.nodeValue
             }
-            is.close();
-
-        } catch (Exception e) {
-            e.printStackTrace();
+            `is`.close()
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
-        return getstr;
+        return getstr
     }
 }

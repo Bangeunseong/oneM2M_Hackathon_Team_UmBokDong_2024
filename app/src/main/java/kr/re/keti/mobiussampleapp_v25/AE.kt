@@ -1,29 +1,24 @@
-package kr.re.keti.mobiussampleapp_v25;
+package kr.re.keti.mobiussampleapp_v25
 
 /**
  * Created by araha on 2016-09-20.
  */
-public class AE {
-    public String appos = "";
-    public String appId = "";
-    public String aeId = "";
-    public String appName = "";
-    public String pointOfAccess = "";
-    public String appPort = "";
-    public String appProtocol = "";
-    public String tasPort = "";
-    public String cilimit = "";
+class AE {
+    var appos: String = ""
+    var appId: String = ""
+    var aEid: String? = ""
+    var applicationName: String = ""
+    var pointOfAccess: String = ""
+    var appPort: String = ""
+    var appProtocol: String = ""
+    var tasPort: String = ""
+    var cilimit: String = ""
 
-    public void setAEid(String aeid){
-        this.aeId = aeid;
+    fun setAppName(appname: String) {
+        this.applicationName = appname
     }
-    public void setAppName(String appname){
-        this.appName = appname;
-    }
-    public String getAEid() {
-        return this.aeId;
-    }
-    public String getappName(){
-        return this.appName;
+
+    fun getappName(): String {
+        return this.applicationName
     }
 }

@@ -1,20 +1,20 @@
-package kr.re.keti.mobiussampleapp_v25;
+package kr.re.keti.mobiussampleapp_v25
 
-import org.json.JSONObject;
+import org.json.JSONObject
 
 /**
  * Created by araha on 2016-09-13.
  */
-public class MqttClientRequestParser {
-    private static String TAG = "MqttClientRequestParser";
+object MqttClientRequestParser {
+    private const val TAG = "MqttClientRequestParser"
+
     // xml parser
-
     // json parser
-    public static String notificationJsonParse(String message) throws Exception {
-        JSONObject json = new JSONObject(message);
-        String responserqi = json.getString("rqi");
+    @Throws(Exception::class)
+    fun notificationJsonParse(message: String): String {
+        val json = JSONObject(message)
+        val responserqi = json.getString("rqi")
 
-        return responserqi;
+        return responserqi
     }
-
 }

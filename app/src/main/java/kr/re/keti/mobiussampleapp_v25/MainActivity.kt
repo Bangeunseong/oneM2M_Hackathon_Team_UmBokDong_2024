@@ -1,647 +1,639 @@
-package kr.re.keti.mobiussampleapp_v25;
+package kr.re.keti.mobiussampleapp_v25
 
-import android.os.Handler;
-import android.support.v7.app.AppCompatActivity;
-import android.os.Bundle;
-import android.util.Log;
-import android.view.View;
-import android.view.inputmethod.InputMethodManager;
-import android.widget.Button;
-import android.widget.CompoundButton;
-import android.widget.EditText;
-import android.widget.Switch;
-import android.widget.TextView;
-import android.widget.ToggleButton;
-
-import org.eclipse.paho.android.service.MqttAndroidClient;
-import org.eclipse.paho.client.mqttv3.IMqttActionListener;
-import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken;
-import org.eclipse.paho.client.mqttv3.IMqttToken;
-import org.eclipse.paho.client.mqttv3.MqttCallback;
-import org.eclipse.paho.client.mqttv3.MqttClient;
-import org.eclipse.paho.client.mqttv3.MqttException;
-import org.eclipse.paho.client.mqttv3.MqttMessage;
-
-import java.io.BufferedReader;
-import java.io.DataOutputStream;
-import java.io.InputStreamReader;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-
-import static kr.re.keti.mobiussampleapp_v25.R.layout.activity_main;
+import android.os.Bundle
+import android.os.Handler
+import android.support.v7.app.AppCompatActivity
+import android.util.Log
+import android.view.View
+import android.view.inputmethod.InputMethodManager
+import android.widget.CompoundButton
+import android.widget.ToggleButton
+import kr.re.keti.mobiussampleapp_v25.databinding.ActivityMainBinding
+import org.eclipse.paho.android.service.MqttAndroidClient
+import org.eclipse.paho.client.mqttv3.IMqttActionListener
+import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken
+import org.eclipse.paho.client.mqttv3.IMqttToken
+import org.eclipse.paho.client.mqttv3.MqttCallback
+import org.eclipse.paho.client.mqttv3.MqttClient
+import org.eclipse.paho.client.mqttv3.MqttException
+import org.eclipse.paho.client.mqttv3.MqttMessage
+import java.io.BufferedReader
+import java.io.DataOutputStream
+import java.io.InputStreamReader
+import java.net.HttpURLConnection
+import java.net.URL
+import java.util.logging.Level
+import java.util.logging.Logger
 
 // TODO: WorkManager를 이용한 MQTT connection 열기 및 데이터 Retrieve(비동기적 데이터 가져오기 위함) -> Trigger Theft Notification
-public class MainActivity extends AppCompatActivity implements Button.OnClickListener, CompoundButton.OnCheckedChangeListener {
-    public Button btnRetrieve;
-    public ToggleButton btnControl_Green;
-    public ToggleButton btnControl_Blue;
-    public Switch Switch_MQTT;
-    public TextView textViewData;
-    public Handler handler;
-    public ToggleButton btnAddr_Set;
+class MainActivity : AppCompatActivity(), View.OnClickListener, CompoundButton.OnCheckedChangeListener {
+    // Field
+    private var _binding: ActivityMainBinding? = null
+    var handler: Handler = Handler()
 
-    private static CSEBase csebase = new CSEBase();
-    private static AE ae = new AE();
-    private static String TAG = "MainActivity";
-    private String MQTTPort = "1883";
-    private String ServiceAEName = "ae-edu1";
-    private String MQTT_Req_Topic = "";
-    private String MQTT_Resp_Topic = "";
-    private MqttAndroidClient mqttClient = null;
-    private EditText EditText_Address =null;
-    private String Mobius_Address ="";
+    private val MQTTPort = "1883"
+    private val ServiceAEName = "ae-edu1"
+    private var MQTT_Req_Topic = ""
+    private var MQTT_Resp_Topic = ""
+    private var mqttClient: MqttAndroidClient? = null
+    private var Mobius_Address = ""
+    private val binding get() = _binding!!
 
-    // Main
-    public MainActivity() {
-        handler = new Handler();
-    }
     /* onCreate */
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(activity_main);
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        _binding = ActivityMainBinding.inflate(layoutInflater)
+        setContentView(binding.root)
 
-        btnRetrieve = (Button) findViewById(R.id.btnRetrieve);
-        Switch_MQTT = (Switch) findViewById(R.id.switch_mqtt);
-        btnControl_Green = (ToggleButton) findViewById(R.id.btnControl_Green);
-        btnControl_Blue = (ToggleButton) findViewById(R.id.btnControl_Blue);
-        textViewData = (TextView) findViewById(R.id.textViewData);
-        EditText_Address = (EditText) findViewById(R.id.editText);
-        btnAddr_Set = (ToggleButton) findViewById(R.id.toggleButton_Addr);
+        binding.btnRetrieve.setOnClickListener(this)
+        binding.switchMqtt.setOnCheckedChangeListener(this)
+        binding.btnControlGreen.setOnClickListener(this)
+        binding.btnControlBlue.setOnClickListener(this)
+        binding.toggleButtonAddr.setOnClickListener(this)
 
-        btnRetrieve.setOnClickListener(this);
-        Switch_MQTT.setOnCheckedChangeListener(this);
-        btnControl_Green.setOnClickListener(this);
-        btnControl_Blue.setOnClickListener(this);
-        btnAddr_Set.setOnClickListener(this);
+        binding.btnRetrieve.visibility = View.INVISIBLE
+        binding.switchMqtt.visibility = View.INVISIBLE
+        binding.btnControlGreen.visibility = View.INVISIBLE
+        binding.btnControlBlue.visibility = View.INVISIBLE
 
-        btnRetrieve.setVisibility(View.INVISIBLE);
-        Switch_MQTT.setVisibility(View.INVISIBLE);
-        btnControl_Green.setVisibility(View.INVISIBLE);
-        btnControl_Blue.setVisibility(View.INVISIBLE);
-
-        btnAddr_Set.setFocusable(true);
+        binding.toggleButtonAddr.isFocusable = true
 
         // Create AE and Get AEID
         // GetAEInfo();
     }
+
+    override fun onDestroy() {
+        super.onDestroy()
+
+        _binding = null
+    }
+
     /* AE Create for Androdi AE */
-    public void GetAEInfo() {
+    fun GetAEInfo() {
+        Mobius_Address = binding.editText.text.toString()
 
-        Mobius_Address = EditText_Address.getText().toString();
-
-        csebase.setInfo(Mobius_Address,"7579","Mobius","1883");
+        csebase.setInfo(Mobius_Address, "7579", "Mobius", "1883")
 
         //csebase.setInfo("203.253.128.151","7579","Mobius","1883");
         // AE Create for Android AE
-        ae.setAppName("ncubeapp");
-        aeCreateRequest aeCreate = new aeCreateRequest();
-        aeCreate.setReceiver(new IReceived() {
-            public void getResponseBody(final String msg) {
-                handler.post(new Runnable() {
-                    public void run() {
-                        Log.d(TAG, "** AE Create ResponseCode[" + msg +"]");
-                        if( Integer.parseInt(msg) == 201 ){
-                            MQTT_Req_Topic = "/oneM2M/req/Mobius2/"+ae.getAEid()+"_sub"+"/#";
-                            MQTT_Resp_Topic = "/oneM2M/resp/Mobius2/"+ae.getAEid()+"_sub"+"/json";
-                            Log.d(TAG, "ReqTopic["+ MQTT_Req_Topic+"]");
-                            Log.d(TAG, "ResTopic["+ MQTT_Resp_Topic+"]");
-                        }
-                        else { // If AE is Exist , GET AEID
-                            aeRetrieveRequest aeRetrive = new aeRetrieveRequest();
-                            aeRetrive.setReceiver(new IReceived() {
-                                public void getResponseBody(final String resmsg) {
-                                    handler.post(new Runnable() {
-                                        public void run() {
-                                            Log.d(TAG, "** AE Retrive ResponseCode[" + resmsg +"]");
-                                            MQTT_Req_Topic = "/oneM2M/req/Mobius2/"+ae.getAEid()+"_sub"+"/#";
-                                            MQTT_Resp_Topic = "/oneM2M/resp/Mobius2/"+ae.getAEid()+"_sub"+"/json";
-                                            Log.d(TAG, "ReqTopic["+ MQTT_Req_Topic+"]");
-                                            Log.d(TAG, "ResTopic["+ MQTT_Resp_Topic+"]");
-                                        }
-                                    });
+        ae.setAppName("ncubeapp")
+        val aeCreate = aeCreateRequest()
+        aeCreate.setReceiver(object : IReceived {
+            override fun getResponseBody(msg: String) {
+                handler.post {
+                    Log.d(TAG, "** AE Create ResponseCode[$msg]")
+                    if (msg.toInt() == 201) {
+                        MQTT_Req_Topic = "/oneM2M/req/Mobius2/" + ae.aEid + "_sub" + "/#"
+                        MQTT_Resp_Topic = "/oneM2M/resp/Mobius2/" + ae.aEid + "_sub" + "/json"
+                        Log.d(TAG, "ReqTopic[$MQTT_Req_Topic]")
+                        Log.d(TAG, "ResTopic[$MQTT_Resp_Topic]")
+                    } else { // If AE is Exist , GET AEID
+                        val aeRetrive = aeRetrieveRequest()
+                        aeRetrive.setReceiver(object : IReceived {
+                            override fun getResponseBody(resmsg: String) {
+                                handler.post {
+                                    Log.d(TAG, "** AE Retrive ResponseCode[$resmsg]")
+                                    MQTT_Req_Topic =
+                                        "/oneM2M/req/Mobius2/" + ae.aEid + "_sub" + "/#"
+                                    MQTT_Resp_Topic =
+                                        "/oneM2M/resp/Mobius2/" + ae.aEid + "_sub" + "/json"
+                                    Log.d(TAG, "ReqTopic[$MQTT_Req_Topic]")
+                                    Log.d(TAG, "ResTopic[$MQTT_Resp_Topic]")
                                 }
-                            });
-                            aeRetrive.start();
-                        }
+                            }
+                        })
+                        aeRetrive.start()
                     }
-                });
+                }
             }
-        });
-        aeCreate.start();
+        })
+        aeCreate.start()
     }
-    /* Switch - Get Co2 Data With MQTT */
-    public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
 
+    /* Switch - Get Co2 Data With MQTT */
+    override fun onCheckedChanged(buttonView: CompoundButton, isChecked: Boolean) {
         if (isChecked) {
-            Log.d(TAG, "MQTT Create");
-            MQTT_Create(true);
+            Log.d(TAG, "MQTT Create")
+            MQTT_Create(true)
         } else {
-            Log.d(TAG, "MQTT Close");
-            MQTT_Create(false);
+            Log.d(TAG, "MQTT Close")
+            MQTT_Create(false)
         }
     }
+
     /* MQTT Subscription */
-    public void MQTT_Create(boolean mtqqStart) {
+    fun MQTT_Create(mtqqStart: Boolean) {
         if (mtqqStart && mqttClient == null) {
             /* Subscription Resource Create to Yellow Turtle */
-            SubscribeResource subcribeResource = new SubscribeResource();
-            subcribeResource.setReceiver(new IReceived() {
-                public void getResponseBody(final String msg) {
-                    handler.post(new Runnable() {
-                        public void run() {
-                            textViewData.setText("**** Subscription Resource Create 요청 결과 ****\r\n\r\n" + msg);
-                        }
-                    });
+            val subcribeResource = SubscribeResource()
+            subcribeResource.setReceiver(object : IReceived {
+                override fun getResponseBody(msg: String) {
+                    handler.post {
+                        binding.textViewData.text = "**** Subscription Resource Create 요청 결과 ****\r\n\r\n$msg"
+                    }
                 }
-            });
-            subcribeResource.start();
+            })
+            subcribeResource.start()
 
             /* MQTT Subscribe */
-            mqttClient = new MqttAndroidClient(this.getApplicationContext(), "tcp://" + csebase.getHost() + ":" + csebase.getMQTTPort(), MqttClient.generateClientId());
-            mqttClient.setCallback(mainMqttCallback);
+            mqttClient = MqttAndroidClient(
+                this.applicationContext,
+                "tcp://" + csebase.host + ":" + csebase.MQTTPort,
+                MqttClient.generateClientId()
+            )
+            mqttClient!!.setCallback(mainMqttCallback)
             try {
-                IMqttToken token = mqttClient.connect();
-                token.setActionCallback(mainIMqttActionListener);
-            } catch (MqttException e) {
-                e.printStackTrace();
+                val token = mqttClient!!.connect()
+                token.actionCallback = mainIMqttActionListener
+            } catch (e: MqttException) {
+                e.printStackTrace()
             }
         } else {
             /* MQTT unSubscribe or Client Close */
-            mqttClient.setCallback(null);
-            mqttClient.close();
-            mqttClient = null;
+            mqttClient!!.setCallback(null)
+            mqttClient!!.close()
+            mqttClient = null
         }
     }
-    /* MQTT Listener */
-    private IMqttActionListener mainIMqttActionListener = new IMqttActionListener() {
-        @Override
-        public void onSuccess(IMqttToken asyncActionToken) {
-            Log.d(TAG, "onSuccess");
-            String payload = "";
-            int mqttQos = 1; /* 0: NO QoS, 1: No Check , 2: Each Check */
 
-            MqttMessage message = new MqttMessage(payload.getBytes());
+    /* MQTT Listener */
+    private val mainIMqttActionListener: IMqttActionListener = object : IMqttActionListener {
+        override fun onSuccess(asyncActionToken: IMqttToken) {
+            Log.d(TAG, "onSuccess")
+            val payload = ""
+            val mqttQos = 1 /* 0: NO QoS, 1: No Check , 2: Each Check */
+
+            val message = MqttMessage(payload.toByteArray())
             try {
-                mqttClient.subscribe(MQTT_Req_Topic, mqttQos);
-            } catch (MqttException e) {
-                e.printStackTrace();
+                mqttClient!!.subscribe(MQTT_Req_Topic, mqttQos)
+            } catch (e: MqttException) {
+                e.printStackTrace()
             }
         }
 
-        @Override
-        public void onFailure(IMqttToken asyncActionToken, Throwable exception) {
-            Log.d(TAG, "onFailure");
+        override fun onFailure(asyncActionToken: IMqttToken, exception: Throwable) {
+            Log.d(TAG, "onFailure")
         }
-    };
+    }
+
     /* MQTT Broker Message Received */
-    private MqttCallback mainMqttCallback = new MqttCallback() {
-        @Override
-        public void connectionLost(Throwable cause) {
-            Log.d(TAG, "connectionLost");
+    private val mainMqttCallback: MqttCallback = object : MqttCallback {
+        override fun connectionLost(cause: Throwable) {
+            Log.d(TAG, "connectionLost")
         }
 
-        @Override
-        public void messageArrived(String topic, MqttMessage message) throws Exception {
+        @Throws(Exception::class)
+        override fun messageArrived(topic: String, message: MqttMessage) {
+            Log.d(TAG, "messageArrived")
 
-            Log.d(TAG, "messageArrived");
-
-            textViewData.setText("");
-            textViewData.setText("**** MQTT CO2 실시간 조회 ****\r\n\r\n" + message.toString().replaceAll(",", "\n"));
-            Log.d(TAG, "Notify ResMessage:" + message.toString());
+            binding.textViewData.text = ""
+            binding.textViewData.text = """
+                **** MQTT CO2 실시간 조회 ****
+                
+                ${message.toString().replace(",".toRegex(), "\n")}
+                """.trimIndent()
+            Log.d(TAG, "Notify ResMessage:$message")
 
             /* Json Type Response Parsing */
-            String retrqi = MqttClientRequestParser.notificationJsonParse(message.toString());
-            Log.d(TAG, "RQI["+ retrqi +"]");
+            val retrqi = MqttClientRequestParser.notificationJsonParse(message.toString())
+            Log.d(TAG, "RQI[$retrqi]")
 
-            String responseMessage = MqttClientRequest.notificationResponse(retrqi);
-            Log.d(TAG, "Recv OK ResMessage ["+responseMessage+"]");
+            val responseMessage = MqttClientRequest.notificationResponse(retrqi)
+            Log.d(TAG, "Recv OK ResMessage [$responseMessage]")
 
             /* Make json for MQTT Response Message */
-            MqttMessage res_message = new MqttMessage(responseMessage.getBytes());
+            val res_message = MqttMessage(responseMessage!!.toByteArray())
 
             try {
-                mqttClient.publish(MQTT_Resp_Topic, res_message);
-            } catch (MqttException e) {
-                e.printStackTrace();
+                mqttClient!!.publish(MQTT_Resp_Topic, res_message)
+            } catch (e: MqttException) {
+                e.printStackTrace()
             }
         }
-        @Override
-        public void deliveryComplete(IMqttDeliveryToken token) {
-            Log.d(TAG, "deliveryComplete");
-        }
 
-    };
-    @Override
-    public void onClick(View v) {
-        switch (v.getId()) {
-            case R.id.btnRetrieve: {
-                RetrieveRequest req = new RetrieveRequest();
-                textViewData.setText("");
-                req.setReceiver(new IReceived() {
-                    public void getResponseBody(final String msg) {
-                        handler.post(new Runnable() {
-                            public void run() {
-                                textViewData.setText("************** CO2 조회 *************\r\n\r\n" + msg);
-                            }
-                        });
+        override fun deliveryComplete(token: IMqttDeliveryToken) {
+            Log.d(TAG, "deliveryComplete")
+        }
+    }
+
+    override fun onClick(v: View) {
+        when (v.id) {
+            R.id.btnRetrieve -> {
+                val req = RetrieveRequest()
+                binding.textViewData.text = ""
+                req.setReceiver(object : IReceived {
+                    override fun getResponseBody(msg: String) {
+                        handler.post {
+                            binding.textViewData.text = "************** CO2 조회 *************\r\n\r\n$msg"
+                        }
                     }
-                });
-                req.start();
-                break;
+                })
+                req.start()
             }
-            case R.id.btnControl_Green: {
-                if (((ToggleButton) v).isChecked()) {
-                    ControlRequest req = new ControlRequest("1");
-                    req.setReceiver(new IReceived() {
-                        public void getResponseBody(final String msg) {
-                            handler.post(new Runnable() {
-                                public void run() {
-                                    textViewData.setText("************** LED Green 제어(켜짐) *************\r\n\r\n" + msg);
-                                }
-                            });
+
+            R.id.btnControl_Green -> {
+                if ((v as ToggleButton).isChecked) {
+                    val req = ControlRequest("1")
+                    req.setReceiver(object : IReceived {
+                        override fun getResponseBody(msg: String) {
+                            handler.post {
+                                binding.textViewData.text =
+                                    "************** LED Green 제어(켜짐) *************\r\n\r\n$msg"
+                            }
                         }
-                    });
-                    req.start();
+                    })
+                    req.start()
                 } else {
-                    ControlRequest req = new ControlRequest("2");
-                    req.setReceiver(new IReceived() {
-                        public void getResponseBody(final String msg) {
-                            handler.post(new Runnable() {
-                                public void run() {
-                                    textViewData.setText("************** LED Green 제어(꺼짐) **************\r\n\r\n" + msg);
-                                }
-                            });
+                    val req = ControlRequest("2")
+                    req.setReceiver(object : IReceived {
+                        override fun getResponseBody(msg: String) {
+                            handler.post {
+                                binding.textViewData.text =
+                                    "************** LED Green 제어(꺼짐) **************\r\n\r\n$msg"
+                            }
                         }
-                    });
-                    req.start();
+                    })
+                    req.start()
                 }
-                break;
             }
-            case R.id.btnControl_Blue: {
-                if (((ToggleButton) v).isChecked()) {
-                    ControlRequest req = new ControlRequest("3");
-                    req.setReceiver(new IReceived() {
-                        public void getResponseBody(final String msg) {
-                            handler.post(new Runnable() {
-                                public void run() {
-                                    textViewData.setText("************** LED BLUE 제어(켜짐) *************\r\n\r\n" + msg);
-                                }
-                            });
+
+            R.id.btnControl_Blue -> {
+                if ((v as ToggleButton).isChecked) {
+                    val req = ControlRequest("3")
+                    req.setReceiver(object : IReceived {
+                        override fun getResponseBody(msg: String) {
+                            handler.post {
+                                binding.textViewData.text =
+                                    "************** LED BLUE 제어(켜짐) *************\r\n\r\n$msg"
+                            }
                         }
-                    });
-                    req.start();
+                    })
+                    req.start()
                 } else {
-                    ControlRequest req = new ControlRequest("4");
-                    req.setReceiver(new IReceived() {
-                        public void getResponseBody(final String msg) {
-                            handler.post(new Runnable() {
-                                public void run() {
-                                    textViewData.setText("************** LED BLUE 제어(꺼짐) **************\r\n\r\n" + msg);
-                                }
-                            });
+                    val req = ControlRequest("4")
+                    req.setReceiver(object : IReceived {
+                        override fun getResponseBody(msg: String) {
+                            handler.post {
+                                binding.textViewData.text =
+                                    "************** LED BLUE 제어(꺼짐) **************\r\n\r\n$msg"
+                            }
                         }
-                    });
-                    req.start();
+                    })
+                    req.start()
                 }
-                break;
             }
-            case R.id.toggleButton_Addr: {
-                if (((ToggleButton) v).isChecked()) {
 
-                    btnRetrieve.setVisibility(View.VISIBLE);
-                    Switch_MQTT.setVisibility(View.VISIBLE);
-                    btnControl_Green.setVisibility(View.VISIBLE);
-                    btnControl_Blue.setVisibility(View.VISIBLE);
+            R.id.toggleButton_Addr -> {
+                if ((v as ToggleButton).isChecked) {
+                    binding.btnRetrieve.visibility = View.VISIBLE
+                    binding.switchMqtt.visibility = View.VISIBLE
+                    binding.btnControlGreen.visibility = View.VISIBLE
+                    binding.btnControlBlue.visibility = View.VISIBLE
 
-                    InputMethodManager imm = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
-                    imm.hideSoftInputFromWindow(EditText_Address.getWindowToken(), 0);//hide keyboard
+                    val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
+                    imm.hideSoftInputFromWindow(binding.editText.windowToken, 0) //hide keyboard
 
-                    GetAEInfo();
-
+                    GetAEInfo()
                 } else {
-                    btnRetrieve.setVisibility(View.INVISIBLE);
-                    Switch_MQTT.setVisibility(View.INVISIBLE);
-                    btnControl_Green.setVisibility(View.INVISIBLE);
-                    btnControl_Blue.setVisibility(View.INVISIBLE);
-
+                    binding.btnRetrieve.visibility = View.INVISIBLE
+                    binding.switchMqtt.visibility = View.INVISIBLE
+                    binding.btnControlGreen.visibility = View.INVISIBLE
+                    binding.btnControlBlue.visibility = View.INVISIBLE
                 }
-                break;
             }
         }
     }
-    @Override
-    public void onStart() {
-        super.onStart();
 
+    public override fun onStart() {
+        super.onStart()
     }
-    @Override
-    public void onStop() {
-        super.onStop();
 
+    public override fun onStop() {
+        super.onStop()
     }
 
     /* Response callback Interface */
-    public interface IReceived {
-        void getResponseBody(String msg);
+    interface IReceived {
+        fun getResponseBody(msg: String)
     }
 
     /* Retrieve Co2 Sensor */
-    class RetrieveRequest extends Thread {
-        private final Logger LOG = Logger.getLogger(RetrieveRequest.class.getName());
-        private IReceived receiver;
-        private String ContainerName = "cnt-co2";
+    internal inner class RetrieveRequest : Thread {
+        private val LOG: Logger = Logger.getLogger(
+            RetrieveRequest::class.java.name
+        )
+        private var receiver: IReceived? = null
+        private var ContainerName = "cnt-co2"
 
-        public RetrieveRequest(String containerName) {
-            this.ContainerName = containerName;
+        constructor(containerName: String) {
+            this.ContainerName = containerName
         }
-        public RetrieveRequest() {}
-        public void setReceiver(IReceived hanlder) { this.receiver = hanlder; }
 
-        @Override
-        public void run() {
+        constructor()
+
+        fun setReceiver(hanlder: IReceived?) {
+            this.receiver = hanlder
+        }
+
+        override fun run() {
             try {
-                String sb = csebase.getServiceUrl() + "/" + ServiceAEName + "/" + ContainerName + "/" + "latest";
+                val sb =
+                    csebase.serviceUrl + "/" + ServiceAEName + "/" + ContainerName + "/" + "latest"
 
-                URL mUrl = new URL(sb);
+                val mUrl = URL(sb)
 
-                HttpURLConnection conn = (HttpURLConnection) mUrl.openConnection();
-                conn.setRequestMethod("GET");
-                conn.setDoInput(true);
-                conn.setDoOutput(false);
+                val conn = mUrl.openConnection() as HttpURLConnection
+                conn.requestMethod = "GET"
+                conn.doInput = true
+                conn.doOutput = false
 
-                conn.setRequestProperty("Accept", "application/xml");
-                conn.setRequestProperty("X-M2M-RI", "12345");
-                conn.setRequestProperty("X-M2M-Origin", ae.getAEid() );
-                conn.setRequestProperty("nmtype", "long");
-                conn.connect();
+                conn.setRequestProperty("Accept", "application/xml")
+                conn.setRequestProperty("X-M2M-RI", "12345")
+                conn.setRequestProperty("X-M2M-Origin", ae.aEid)
+                conn.setRequestProperty("nmtype", "long")
+                conn.connect()
 
-                String strResp = "";
-                BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+                var strResp = ""
+                val `in` = BufferedReader(InputStreamReader(conn.inputStream))
 
-                String strLine= "";
-                while ((strLine = in.readLine()) != null) {
-                    strResp += strLine;
+                var strLine = ""
+                while ((`in`.readLine().also { strLine = it }) != null) {
+                    strResp += strLine
                 }
 
-                if ( strResp != "" ) {
-                    receiver.getResponseBody(strResp);
+                if (strResp !== "") {
+                    receiver!!.getResponseBody(strResp)
                 }
-                conn.disconnect();
-
-            } catch (Exception exp) {
-                LOG.log(Level.WARNING, exp.getMessage());
+                conn.disconnect()
+            } catch (exp: Exception) {
+                LOG.log(Level.WARNING, exp.message)
             }
         }
     }
+
     /* Request Control LED */
-    class ControlRequest extends Thread {
-        private final Logger LOG = Logger.getLogger(ControlRequest.class.getName());
-        private IReceived receiver;
-        private String container_name = "cnt-led";
+    internal inner class ControlRequest(comm: String) : Thread() {
+        private val LOG: Logger = Logger.getLogger(
+            ControlRequest::class.java.name
+        )
+        private var receiver: IReceived? = null
+        private val container_name = "cnt-led"
 
-        public ContentInstanceObject contentinstance;
-        public ControlRequest(String comm) {
-            contentinstance = new ContentInstanceObject();
-            contentinstance.setContent(comm);
+        var contentinstance: ContentInstanceObject = ContentInstanceObject()
+
+        init {
+            contentinstance.setContent(comm)
         }
-        public void setReceiver(IReceived hanlder) { this.receiver = hanlder; }
 
-        @Override
-        public void run() {
+        fun setReceiver(hanlder: IReceived?) {
+            this.receiver = hanlder
+        }
+
+        override fun run() {
             try {
-                String sb = csebase.getServiceUrl() +"/" + ServiceAEName + "/" + container_name;
+                val sb = csebase.serviceUrl + "/" + ServiceAEName + "/" + container_name
 
-                URL mUrl = new URL(sb);
+                val mUrl = URL(sb)
 
-                HttpURLConnection conn = (HttpURLConnection) mUrl.openConnection();
-                conn.setRequestMethod("POST");
-                conn.setDoInput(true);
-                conn.setDoOutput(true);
-                conn.setUseCaches(false);
-                conn.setInstanceFollowRedirects(false);
+                val conn = mUrl.openConnection() as HttpURLConnection
+                conn.requestMethod = "POST"
+                conn.doInput = true
+                conn.doOutput = true
+                conn.useCaches = false
+                conn.instanceFollowRedirects = false
 
-                conn.setRequestProperty("Accept", "application/xml");
-                conn.setRequestProperty("Content-Type", "application/vnd.onem2m-res+xml;ty=4");
-                conn.setRequestProperty("locale", "ko");
-                conn.setRequestProperty("X-M2M-RI", "12345");
-                conn.setRequestProperty("X-M2M-Origin", ae.getAEid() );
+                conn.setRequestProperty("Accept", "application/xml")
+                conn.setRequestProperty("Content-Type", "application/vnd.onem2m-res+xml;ty=4")
+                conn.setRequestProperty("locale", "ko")
+                conn.setRequestProperty("X-M2M-RI", "12345")
+                conn.setRequestProperty("X-M2M-Origin", ae.aEid)
 
-                String reqContent = contentinstance.makeXML();
-                conn.setRequestProperty("Content-Length", String.valueOf(reqContent.length()));
+                val reqContent = contentinstance.makeXML()
+                conn.setRequestProperty("Content-Length", reqContent!!.length.toString())
 
-                DataOutputStream dos = new DataOutputStream(conn.getOutputStream());
-                dos.write(reqContent.getBytes());
-                dos.flush();
-                dos.close();
+                val dos = DataOutputStream(conn.outputStream)
+                dos.write(reqContent.toByteArray())
+                dos.flush()
+                dos.close()
 
-                BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+                val `in` = BufferedReader(InputStreamReader(conn.inputStream))
 
-                String resp = "";
-                String strLine="";
-                while ((strLine = in.readLine()) != null) {
-                    resp += strLine;
+                var resp = ""
+                var strLine = ""
+                while ((`in`.readLine().also { strLine = it }) != null) {
+                    resp += strLine
                 }
-                if (resp != "") {
-                    receiver.getResponseBody(resp);
+                if (resp !== "") {
+                    receiver!!.getResponseBody(resp)
                 }
-                conn.disconnect();
-
-            } catch (Exception exp) {
-                LOG.log(Level.SEVERE, exp.getMessage());
+                conn.disconnect()
+            } catch (exp: Exception) {
+                LOG.log(Level.SEVERE, exp.message)
             }
         }
     }
+
     /* Request AE Creation */
-    class aeCreateRequest extends Thread {
-        private final Logger LOG = Logger.getLogger(aeCreateRequest.class.getName());
-        String TAG = aeCreateRequest.class.getName();
-        private IReceived receiver;
-        int responseCode=0;
-        public ApplicationEntityObject applicationEntity;
-        public void setReceiver(IReceived hanlder) { this.receiver = hanlder; }
-        public aeCreateRequest(){
-            applicationEntity = new ApplicationEntityObject();
-            applicationEntity.setResourceName(ae.getappName());
+    internal inner class aeCreateRequest : Thread() {
+        private val LOG: Logger = Logger.getLogger(
+            aeCreateRequest::class.java.name
+        )
+        var TAG: String = aeCreateRequest::class.java.name
+        private var receiver: IReceived? = null
+        var responseCode: Int = 0
+        var applicationEntity: ApplicationEntityObject = ApplicationEntityObject()
+        fun setReceiver(hanlder: IReceived?) {
+            this.receiver = hanlder
         }
-        @Override
-        public void run() {
+
+        init {
+            applicationEntity.setResourceName(ae.getappName())
+        }
+
+        override fun run() {
             try {
+                val sb = csebase.serviceUrl
+                val mUrl = URL(sb)
 
-                String sb = csebase.getServiceUrl();
-                URL mUrl = new URL(sb);
+                val conn = mUrl.openConnection() as HttpURLConnection
+                conn.requestMethod = "POST"
+                conn.doInput = true
+                conn.doOutput = true
+                conn.useCaches = false
+                conn.instanceFollowRedirects = false
 
-                HttpURLConnection conn = (HttpURLConnection) mUrl.openConnection();
-                conn.setRequestMethod("POST");
-                conn.setDoInput(true);
-                conn.setDoOutput(true);
-                conn.setUseCaches(false);
-                conn.setInstanceFollowRedirects(false);
+                conn.setRequestProperty("Content-Type", "application/vnd.onem2m-res+xml;ty=2")
+                conn.setRequestProperty("Accept", "application/xml")
+                conn.setRequestProperty("locale", "ko")
+                conn.setRequestProperty("X-M2M-Origin", "S" + ae.getappName())
+                conn.setRequestProperty("X-M2M-RI", "12345")
+                conn.setRequestProperty("X-M2M-NM", ae.getappName())
 
-                conn.setRequestProperty("Content-Type", "application/vnd.onem2m-res+xml;ty=2");
-                conn.setRequestProperty("Accept", "application/xml");
-                conn.setRequestProperty("locale", "ko");
-                conn.setRequestProperty("X-M2M-Origin", "S"+ae.getappName());
-                conn.setRequestProperty("X-M2M-RI", "12345");
-                conn.setRequestProperty("X-M2M-NM", ae.getappName() );
+                val reqXml = applicationEntity.makeXML()
+                conn.setRequestProperty("Content-Length", reqXml!!.length.toString())
 
-                String reqXml = applicationEntity.makeXML();
-                conn.setRequestProperty("Content-Length", String.valueOf(reqXml.length()));
+                val dos = DataOutputStream(conn.outputStream)
+                dos.write(reqXml.toByteArray())
+                dos.flush()
+                dos.close()
 
-                DataOutputStream dos = new DataOutputStream(conn.getOutputStream());
-                dos.write(reqXml.getBytes());
-                dos.flush();
-                dos.close();
+                responseCode = conn.responseCode
 
-                responseCode = conn.getResponseCode();
-
-                BufferedReader in = null;
-                String aei = "";
+                var `in`: BufferedReader? = null
+                var aei = ""
                 if (responseCode == 201) {
                     // Get AEID from Response Data
-                    in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+                    `in` = BufferedReader(InputStreamReader(conn.inputStream))
 
-                    String resp = "";
-                    String strLine;
-                    while ((strLine = in.readLine()) != null) {
-                        resp += strLine;
+                    var resp = ""
+                    var strLine: String
+                    while ((`in`.readLine().also { strLine = it }) != null) {
+                        resp += strLine
                     }
 
-                    ParseElementXml pxml = new ParseElementXml();
-                    aei = pxml.GetElementXml(resp, "aei");
-                    ae.setAEid( aei );
-                    Log.d(TAG, "Create Get AEID[" + aei + "]");
-                    in.close();
+                    val pxml = ParseElementXml()
+                    aei = pxml.GetElementXml(resp, "aei")
+                    ae.aEid = aei
+                    Log.d(TAG, "Create Get AEID[$aei]")
+                    `in`.close()
                 }
                 if (responseCode != 0) {
-                    receiver.getResponseBody( Integer.toString(responseCode) );
+                    receiver!!.getResponseBody(responseCode.toString())
                 }
-                conn.disconnect();
-            } catch (Exception exp) {
-                LOG.log(Level.SEVERE, exp.getMessage());
+                conn.disconnect()
+            } catch (exp: Exception) {
+                LOG.log(Level.SEVERE, exp.message)
             }
-
         }
     }
+
     /* Retrieve AE-ID */
-    class aeRetrieveRequest extends Thread {
-        private final Logger LOG = Logger.getLogger(aeCreateRequest.class.getName());
-        private IReceived receiver;
-        int responseCode=0;
+    internal inner class aeRetrieveRequest : Thread() {
+        private val LOG: Logger = Logger.getLogger(
+            aeCreateRequest::class.java.name
+        )
+        private var receiver: IReceived? = null
+        var responseCode: Int = 0
 
-        public aeRetrieveRequest() {
-        }
-        public void setReceiver(IReceived hanlder) {
-            this.receiver = hanlder;
+        fun setReceiver(hanlder: IReceived?) {
+            this.receiver = hanlder
         }
 
-        @Override
-        public void run() {
+        override fun run() {
             try {
-                String sb = csebase.getServiceUrl()+"/"+ ae.getappName();
-                URL mUrl = new URL(sb);
+                val sb = csebase.serviceUrl + "/" + ae.getappName()
+                val mUrl = URL(sb)
 
-                HttpURLConnection conn = (HttpURLConnection) mUrl.openConnection();
-                conn.setRequestMethod("GET");
-                conn.setDoInput(true);
-                conn.setDoOutput(false);
+                val conn = mUrl.openConnection() as HttpURLConnection
+                conn.requestMethod = "GET"
+                conn.doInput = true
+                conn.doOutput = false
 
-                conn.setRequestProperty("Accept", "application/xml");
-                conn.setRequestProperty("X-M2M-RI", "12345");
-                conn.setRequestProperty("X-M2M-Origin", "Sandoroid");
-                conn.setRequestProperty("nmtype", "short");
-                conn.connect();
+                conn.setRequestProperty("Accept", "application/xml")
+                conn.setRequestProperty("X-M2M-RI", "12345")
+                conn.setRequestProperty("X-M2M-Origin", "Sandoroid")
+                conn.setRequestProperty("nmtype", "short")
+                conn.connect()
 
-                responseCode = conn.getResponseCode();
+                responseCode = conn.responseCode
 
-                BufferedReader in = null;
-                String aei = "";
+                var `in`: BufferedReader? = null
+                var aei = ""
                 if (responseCode == 200) {
                     // Get AEID from Response Data
-                    in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+                    `in` = BufferedReader(InputStreamReader(conn.inputStream))
 
-                    String resp = "";
-                    String strLine;
-                    while ((strLine = in.readLine()) != null) {
-                        resp += strLine;
+                    var resp = ""
+                    var strLine: String
+                    while ((`in`.readLine().also { strLine = it }) != null) {
+                        resp += strLine
                     }
 
-                    ParseElementXml pxml = new ParseElementXml();
-                    aei = pxml.GetElementXml(resp, "aei");
-                    ae.setAEid( aei );
+                    val pxml = ParseElementXml()
+                    aei = pxml.GetElementXml(resp, "aei")
+                    ae.aEid = aei
                     //Log.d(TAG, "Retrieve Get AEID[" + aei + "]");
-                    in.close();
+                    `in`.close()
                 }
                 if (responseCode != 0) {
-                    receiver.getResponseBody( Integer.toString(responseCode) );
+                    receiver!!.getResponseBody(responseCode.toString())
                 }
-                conn.disconnect();
-            } catch (Exception exp) {
-                LOG.log(Level.SEVERE, exp.getMessage());
+                conn.disconnect()
+            } catch (exp: Exception) {
+                LOG.log(Level.SEVERE, exp.message)
             }
         }
     }
+
     /* Subscribe Co2 Content Resource */
-    class SubscribeResource extends Thread {
-        private final Logger LOG = Logger.getLogger(SubscribeResource.class.getName());
-        private IReceived receiver;
-        private String container_name = "cnt-co2"; //change to control container name
+    internal inner class SubscribeResource : Thread() {
+        private val LOG: Logger = Logger.getLogger(
+            SubscribeResource::class.java.name
+        )
+        private var receiver: IReceived? = null
+        private val container_name = "cnt-co2" //change to control container name
 
-        public ContentSubscribeObject subscribeInstance;
-        public SubscribeResource() {
-            subscribeInstance = new ContentSubscribeObject();
-            subscribeInstance.setUrl(csebase.getHost());
-            subscribeInstance.setResourceName(ae.getAEid()+"_rn");
-            subscribeInstance.setPath(ae.getAEid()+"_sub");
-            subscribeInstance.setOrigin_id(ae.getAEid());
+        var subscribeInstance: ContentSubscribeObject = ContentSubscribeObject()
+
+        init {
+            subscribeInstance.setUrl(csebase.host)
+            subscribeInstance.setResourceName(ae.aEid + "_rn")
+            subscribeInstance.setPath(ae.aEid + "_sub")
+            subscribeInstance.setOrigin_id(ae.aEid)
         }
-        public void setReceiver(IReceived hanlder) { this.receiver = hanlder; }
 
-        @Override
-        public void run() {
+        fun setReceiver(hanlder: IReceived?) {
+            this.receiver = hanlder
+        }
+
+        override fun run() {
             try {
-                String sb = csebase.getServiceUrl() + "/" + ServiceAEName + "/" + container_name;
+                val sb = csebase.serviceUrl + "/" + ServiceAEName + "/" + container_name
 
-                URL mUrl = new URL(sb);
+                val mUrl = URL(sb)
 
-                HttpURLConnection conn = (HttpURLConnection) mUrl.openConnection();
-                conn.setRequestMethod("POST");
-                conn.setDoInput(true);
-                conn.setDoOutput(true);
-                conn.setUseCaches(false);
-                conn.setInstanceFollowRedirects(false);
+                val conn = mUrl.openConnection() as HttpURLConnection
+                conn.requestMethod = "POST"
+                conn.doInput = true
+                conn.doOutput = true
+                conn.useCaches = false
+                conn.instanceFollowRedirects = false
 
-                conn.setRequestProperty("Accept", "application/xml");
-                conn.setRequestProperty("Content-Type", "application/vnd.onem2m-res+xml; ty=23");
-                conn.setRequestProperty("locale", "ko");
-                conn.setRequestProperty("X-M2M-RI", "12345");
-                conn.setRequestProperty("X-M2M-Origin", ae.getAEid());
+                conn.setRequestProperty("Accept", "application/xml")
+                conn.setRequestProperty("Content-Type", "application/vnd.onem2m-res+xml; ty=23")
+                conn.setRequestProperty("locale", "ko")
+                conn.setRequestProperty("X-M2M-RI", "12345")
+                conn.setRequestProperty("X-M2M-Origin", ae.aEid)
 
-                String reqmqttContent = subscribeInstance.makeXML();
-                conn.setRequestProperty("Content-Length", String.valueOf(reqmqttContent.length()));
+                val reqmqttContent = subscribeInstance.makeXML()
+                conn.setRequestProperty("Content-Length", reqmqttContent.length.toString())
 
-                DataOutputStream dos = new DataOutputStream(conn.getOutputStream());
-                dos.write(reqmqttContent.getBytes());
-                dos.flush();
-                dos.close();
+                val dos = DataOutputStream(conn.outputStream)
+                dos.write(reqmqttContent.toByteArray())
+                dos.flush()
+                dos.close()
 
-                BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+                val `in` = BufferedReader(InputStreamReader(conn.inputStream))
 
-                String resp = "";
-                String strLine="";
-                while ((strLine = in.readLine()) != null) {
-                    resp += strLine;
+                var resp = ""
+                var strLine = ""
+                while ((`in`.readLine().also { strLine = it }) != null) {
+                    resp += strLine
                 }
 
-                if (resp != "") {
-                    receiver.getResponseBody(resp);
+                if (resp !== "") {
+                    receiver!!.getResponseBody(resp)
                 }
-                conn.disconnect();
-
-            } catch (Exception exp) {
-                LOG.log(Level.SEVERE, exp.getMessage());
+                conn.disconnect()
+            } catch (exp: Exception) {
+                LOG.log(Level.SEVERE, exp.message)
             }
         }
+    }
+
+    companion object {
+        private val csebase = CSEBase()
+        private val ae = AE()
+        private const val TAG = "MainActivity"
     }
 }
