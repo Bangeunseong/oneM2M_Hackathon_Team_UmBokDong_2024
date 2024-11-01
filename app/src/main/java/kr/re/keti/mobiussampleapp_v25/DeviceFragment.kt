@@ -29,7 +29,7 @@ class DeviceFragment : Fragment() {
                 outRect.left = divWidth
                 outRect.right = divWidth
             }
-            if(divHeight != null){
+            if(divHeight != null) {
                 outRect.top = divHeight
                 outRect.bottom = divHeight
             }
