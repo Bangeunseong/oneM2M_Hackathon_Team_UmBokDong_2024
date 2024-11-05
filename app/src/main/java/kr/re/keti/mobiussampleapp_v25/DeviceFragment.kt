@@ -89,26 +89,6 @@ class DeviceFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        binding.deviceText.text = PAGE_NAME
-        binding.deviceTabLayout.addOnTabSelectedListener(object: TabLayout.OnTabSelectedListener{
-            override fun onTabSelected(tab: TabLayout.Tab?) {
-                if(tab!!.id == R.id.all_devices){
-
-                } else if(tab.id == R.id.pri_devices){
-
-                }
-            }
-
-            override fun onTabUnselected(tab: TabLayout.Tab?) {
-                TODO("Not yet implemented")
-            }
-
-            override fun onTabReselected(tab: TabLayout.Tab?) {
-                TODO("Not yet implemented")
-            }
-
-        })
-
         binding.deviceRecyclerView.setHasFixedSize(false)
         binding.deviceRecyclerView.adapter = DeviceAdapter(ArrayList())
         binding.deviceRecyclerView.layoutManager = GridLayoutManager(context, 2)

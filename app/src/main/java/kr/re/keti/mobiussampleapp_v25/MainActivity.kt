@@ -6,6 +6,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.util.Log
+import android.view.Menu
 import android.view.View
 import android.view.inputmethod.InputMethodManager
 import android.widget.CompoundButton
@@ -56,19 +57,9 @@ class MainActivity : AppCompatActivity(), View.OnClickListener, CompoundButton.O
         _binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        binding.btnRetrieve.setOnClickListener(this)
-        binding.switchMqtt.setOnCheckedChangeListener(this)
-        binding.btnControlGreen.setOnClickListener(this)
-        binding.btnControlBlue.setOnClickListener(this)
-        binding.toggleButtonAddr.setOnClickListener(this)
-
-        binding.btnRetrieve.visibility = View.INVISIBLE
-        binding.switchMqtt.visibility = View.INVISIBLE
-        binding.btnControlGreen.visibility = View.INVISIBLE
-        binding.btnControlBlue.visibility = View.INVISIBLE
-
-        binding.toggleButtonAddr.isFocusable = true
-
+        binding.toolbar.setTitle("기기")
+        binding.toolbar.setTitleTextAppearance(this@MainActivity, R.style.ToolbarTextAppearance)
+        setSupportActionBar(binding.toolbar)
         // Create AE and Get AEID
         // GetAEInfo();
 
@@ -80,9 +71,14 @@ class MainActivity : AppCompatActivity(), View.OnClickListener, CompoundButton.O
         _binding = null
     }
 
+    override fun onPrepareOptionsMenu(menu: Menu?): Boolean {
+        menuInflater.inflate(R.menu.menu_device, menu)
+        return super.onPrepareOptionsMenu(menu)
+    }
+
     /* AE Create for Android AE */
     fun GetAEInfo() {
-        Mobius_Address = binding.editText.text.toString()
+        Mobius_Address = "192.168.55.35"
 
         csebase.setInfo(Mobius_Address, "7579", "Mobius", "1883")
 
@@ -122,6 +118,8 @@ class MainActivity : AppCompatActivity(), View.OnClickListener, CompoundButton.O
         aeCreate.start()
     }
 
+
+
     /* Switch - Get Co2 Data With MQTT */
     override fun onCheckedChanged(buttonView: CompoundButton, isChecked: Boolean) {
         if (isChecked) {
@@ -141,7 +139,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener, CompoundButton.O
             subcribeResource.setReceiver(object : IReceived {
                 override fun getResponseBody(msg: String) {
                     handler.post {
-                        binding.textViewData.text = "**** Subscription Resource Create 요청 결과 ****\r\n\r\n$msg"
+                        Log.d(TAG,"**** Subscription Resource Create 요청 결과 ****\r\n\r\n$msg")
                     }
                 }
             })
@@ -198,12 +196,12 @@ class MainActivity : AppCompatActivity(), View.OnClickListener, CompoundButton.O
         override fun messageArrived(topic: String, message: MqttMessage) {
             Log.d(TAG, "messageArrived")
 
-            binding.textViewData.text = ""
-            binding.textViewData.text = """
-                **** MQTT CO2 실시간 조회 ****
+            //binding.textViewData.text = ""
+            //binding.textViewData.text = """
+            //    **** MQTT CO2 실시간 조회 ****
                 
-                ${message.toString().replace(",".toRegex(), "\n")}
-                """.trimIndent()
+            //    ${message.toString().replace(",".toRegex(), "\n")}
+            //    """.trimIndent()
             Log.d(TAG, "Notify ResMessage:$message")
 
             /* Json Type Response Parsing */
@@ -230,89 +228,6 @@ class MainActivity : AppCompatActivity(), View.OnClickListener, CompoundButton.O
 
     override fun onClick(v: View) {
         when (v.id) {
-            R.id.btnRetrieve -> {
-                val req = RetrieveRequest()
-                binding.textViewData.text = ""
-                req.setReceiver(object : IReceived {
-                    override fun getResponseBody(msg: String) {
-                        handler.post {
-                            binding.textViewData.text = "************** CO2 조회 *************\r\n\r\n$msg"
-                        }
-                    }
-                })
-                req.start()
-            }
-
-            R.id.btnControl_Green -> {
-                if ((v as ToggleButton).isChecked) {
-                    val req = ControlRequest("1")
-                    req.setReceiver(object : IReceived {
-                        override fun getResponseBody(msg: String) {
-                            handler.post {
-                                binding.textViewData.text =
-                                    "************** LED Green 제어(켜짐) *************\r\n\r\n$msg"
-                            }
-                        }
-                    })
-                    req.start()
-                } else {
-                    val req = ControlRequest("2")
-                    req.setReceiver(object : IReceived {
-                        override fun getResponseBody(msg: String) {
-                            handler.post {
-                                binding.textViewData.text =
-                                    "************** LED Green 제어(꺼짐) **************\r\n\r\n$msg"
-                            }
-                        }
-                    })
-                    req.start()
-                }
-            }
-
-            R.id.btnControl_Blue -> {
-                if ((v as ToggleButton).isChecked) {
-                    val req = ControlRequest("3")
-                    req.setReceiver(object : IReceived {
-                        override fun getResponseBody(msg: String) {
-                            handler.post {
-                                binding.textViewData.text =
-                                    "************** LED BLUE 제어(켜짐) *************\r\n\r\n$msg"
-                            }
-                        }
-                    })
-                    req.start()
-                } else {
-                    val req = ControlRequest("4")
-                    req.setReceiver(object : IReceived {
-                        override fun getResponseBody(msg: String) {
-                            handler.post {
-                                binding.textViewData.text =
-                                    "************** LED BLUE 제어(꺼짐) **************\r\n\r\n$msg"
-                            }
-                        }
-                    })
-                    req.start()
-                }
-            }
-
-            R.id.toggleButton_Addr -> {
-                if ((v as ToggleButton).isChecked) {
-                    binding.btnRetrieve.visibility = View.VISIBLE
-                    binding.switchMqtt.visibility = View.VISIBLE
-                    binding.btnControlGreen.visibility = View.VISIBLE
-                    binding.btnControlBlue.visibility = View.VISIBLE
-
-                    val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
-                    imm.hideSoftInputFromWindow(binding.editText.windowToken, 0) //hide keyboard
-
-                    GetAEInfo()
-                } else {
-                    binding.btnRetrieve.visibility = View.INVISIBLE
-                    binding.switchMqtt.visibility = View.INVISIBLE
-                    binding.btnControlGreen.visibility = View.INVISIBLE
-                    binding.btnControlBlue.visibility = View.INVISIBLE
-                }
-            }
         }
     }
 

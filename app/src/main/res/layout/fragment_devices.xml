@@ -6,62 +6,18 @@
     android:layout_height="match_parent"
     tools:context=".DeviceFragment">
 
-    <ScrollView
-        android:id="@+id/device_scrollView"
+    <LinearLayout
+        android:id="@+id/device_layout"
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:background="?attr/colorPrimaryDark"
-        android:labelFor="@id/device_layout"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent">
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:background="@color/colorPrimaryDark">
 
-        <LinearLayout
-            android:id="@+id/device_layout"
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/device_recycler_view"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical">
+            android:layout_height="wrap_content" />
+    </LinearLayout>
 
-            <TextView
-                android:id="@+id/device_text"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:paddingHorizontal="14dp"
-                android:paddingVertical="30dp"
-                android:text="기기"
-                android:textColor="?attr/colorAccent"
-                android:textSize="38dp"
-                android:textStyle="bold" />
 
-            <com.google.android.material.tabs.TabLayout
-                android:id="@+id/device_tabLayout"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:fillViewport="true"
-                app:tabMode="fixed"
-                app:tabSelectedTextColor="@color/colorAccent"
-                app:tabIndicatorColor="@color/colorAccent"
-                app:tabTextColor="@color/colorDeviceText">
-
-                <com.google.android.material.tabs.TabItem
-                    android:id="@+id/all_devices"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:focusedByDefault="true"
-                    android:text="모든 기기"/>
-
-                <com.google.android.material.tabs.TabItem
-                    android:id="@+id/pri_devices"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="개인 기기" />
-            </com.google.android.material.tabs.TabLayout>
-
-            <androidx.recyclerview.widget.RecyclerView
-                android:id="@+id/device_recycler_view"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent" />
-        </LinearLayout>
-    </ScrollView>
 </androidx.constraintlayout.widget.ConstraintLayout>
