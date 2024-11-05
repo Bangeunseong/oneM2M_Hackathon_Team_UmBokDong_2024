@@ -18,3 +18,12 @@ Visit [wiki homepage](https://github.com/IoTKETI/oneM2M-Application-AndroidSampl
 ## **Latest News**
 [2018 May]
 - oneM2M-Application-AndroidSample version 2.5 !! 
+
+## **Link For Presentation Table**
+[2024 November]
+Visit https://docs.google.com/presentation/d/1uy1msY4_Edoiyj7DKYq1eoJKGUTuDhrdwnwUK_KhK9Y/edit#slide=id.g306207c3278_3_0
+
+## **Branch Creation Rule**
+- branch_name: branch_username
+- Use kotlin_remaster branch when creating pull request
+- Use kotlin_remaster branch as basic reference of this project
