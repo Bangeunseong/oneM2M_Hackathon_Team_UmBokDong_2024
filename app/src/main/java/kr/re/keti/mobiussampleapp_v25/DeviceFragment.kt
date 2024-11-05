@@ -1,6 +1,5 @@
 package kr.re.keti.mobiussampleapp_v25
 
-import android.graphics.Color
 import android.graphics.Rect
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -14,7 +13,6 @@ import kr.re.keti.mobiussampleapp_v25.data_objects.AE
 import kr.re.keti.mobiussampleapp_v25.databinding.FragmentDevicesBinding
 import kr.re.keti.mobiussampleapp_v25.databinding.ItemRecyclerDeviceBinding
 import java.util.ArrayList
-import java.util.Arrays
 
 // the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
 private const val NET_ADDR_PARAM = "networkAddress"
@@ -60,7 +58,7 @@ class DeviceFragment : Fragment() {
 
         inner class ViewHolder(val binding: ItemRecyclerDeviceBinding): RecyclerView.ViewHolder(binding.root) {
             fun bind(){
-                binding.deviceName.text = "Bicycle Locker"
+                binding.deviceName.text = deviceList[itemCount].applicationName
                 binding.deviceStatus.text = "등록됨"
             }
         }
@@ -94,7 +92,11 @@ class DeviceFragment : Fragment() {
         binding.deviceText.text = PAGE_NAME
         binding.deviceTabLayout.addOnTabSelectedListener(object: TabLayout.OnTabSelectedListener{
             override fun onTabSelected(tab: TabLayout.Tab?) {
-                TODO("Not yet implemented")
+                if(tab!!.id == R.id.all_devices){
+
+                } else if(tab.id == R.id.pri_devices){
+
+                }
             }
 
             override fun onTabUnselected(tab: TabLayout.Tab?) {

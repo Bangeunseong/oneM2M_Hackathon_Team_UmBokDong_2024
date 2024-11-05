@@ -14,6 +14,10 @@ class AE {
     var tasPort: String = ""
     var cilimit: String = ""
 
+    fun setAEId(aEid: String){
+        this.aEid = aEid
+    }
+
     fun setAppName(appname: String) {
         this.applicationName = appname
     }

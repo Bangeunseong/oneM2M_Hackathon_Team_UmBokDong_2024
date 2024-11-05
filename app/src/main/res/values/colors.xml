@@ -3,6 +3,6 @@
     <color name="colorPrimary">#A7A7A7</color>
     <color name="colorPrimaryDark">#070707</color>
     <color name="colorAccent">#FFFFFF</color>
-    <color name="colorDeviceViewHolder">#616161</color>
+    <color name="colorDeviceViewHolder">#7A616161</color>
     <color name="colorDeviceText">#BEBEBE</color>
 </resources>

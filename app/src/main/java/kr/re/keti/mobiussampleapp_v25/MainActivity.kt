@@ -72,8 +72,6 @@ class MainActivity : AppCompatActivity(), View.OnClickListener, CompoundButton.O
         // Create AE and Get AEID
         // GetAEInfo();
 
-        // Check Permission
-
     }
 
     override fun onDestroy() {
@@ -82,7 +80,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener, CompoundButton.O
         _binding = null
     }
 
-    /* AE Create for Androdi AE */
+    /* AE Create for Android AE */
     fun GetAEInfo() {
         Mobius_Address = binding.editText.text.toString()
 
@@ -164,7 +162,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener, CompoundButton.O
             }
         } else {
             /* MQTT unSubscribe or Client Close */
-            //mqttClient!!.setCallback(null)
+            // mqttClient!!.setCallback(null)
             mqttClient!!.close()
             mqttClient = null
         }
