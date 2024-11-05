@@ -535,7 +535,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener, CompoundButton.O
     /* Retrieve AE-ID */
     internal inner class aeRetrieveRequest : Thread() {
         private val LOG: Logger = Logger.getLogger(
-            aeCreateRequest::class.java.name
+            aeRetrieveRequest::class.java.name
         )
         private var receiver: IReceived? = null
         var responseCode: Int = 0

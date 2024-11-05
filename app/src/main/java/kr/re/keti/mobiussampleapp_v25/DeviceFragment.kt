@@ -1,17 +1,20 @@
 package kr.re.keti.mobiussampleapp_v25
 
+import android.graphics.Color
 import android.graphics.Rect
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.tabs.TabLayout
+import kr.re.keti.mobiussampleapp_v25.data_objects.AE
 import kr.re.keti.mobiussampleapp_v25.databinding.FragmentDevicesBinding
 import kr.re.keti.mobiussampleapp_v25.databinding.ItemRecyclerDeviceBinding
+import java.util.ArrayList
+import java.util.Arrays
 
 // the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
 private const val NET_ADDR_PARAM = "networkAddress"
@@ -36,7 +39,7 @@ class DeviceFragment : Fragment() {
         }
     }
     // Inner Class For Setting Adapter in Device Recycler View
-    inner class DeviceAdapter : RecyclerView.Adapter<DeviceAdapter.ViewHolder>() {
+    inner class DeviceAdapter(private val deviceList: ArrayList<AE>) : RecyclerView.Adapter<DeviceAdapter.ViewHolder>() {
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
             return ViewHolder(ItemRecyclerDeviceBinding.inflate(LayoutInflater.from(parent.context), parent, false))
         }
@@ -46,7 +49,13 @@ class DeviceFragment : Fragment() {
         }
 
         override fun getItemCount(): Int {
-            TODO("Not yet implemented")
+            return deviceList.size
+        }
+
+        fun onDataChanged(deviceList: List<AE>){
+            this.deviceList.clear()
+            deviceList.stream().forEach { this.deviceList.add(it) }
+            notifyDataSetChanged()
         }
 
         inner class ViewHolder(val binding: ItemRecyclerDeviceBinding): RecyclerView.ViewHolder(binding.root) {
@@ -99,7 +108,7 @@ class DeviceFragment : Fragment() {
         })
 
         binding.deviceRecyclerView.setHasFixedSize(false)
-        binding.deviceRecyclerView.adapter = DeviceAdapter()
+        binding.deviceRecyclerView.adapter = DeviceAdapter(ArrayList())
         binding.deviceRecyclerView.layoutManager = GridLayoutManager(context, 2)
         binding.deviceRecyclerView.addItemDecoration(ItemPadding(3,3))
     }
