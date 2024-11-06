@@ -4,11 +4,11 @@
     <item android:id="@+id/menu_add"
         android:title="Add Device"
         android:icon="@drawable/icon_plus_round"
-        android:iconTint="@color/colorAccent"
+        android:iconTint="@color/colorPrimaryDark"
         app:showAsAction="ifRoom"/>
     <item android:id="@+id/menu_delete"
         android:title="Remove Device"
         android:icon="@drawable/icon_minus_round"
-        android:iconTint="@color/colorAccent"
+        android:iconTint="@color/colorPrimaryDark"
         app:showAsAction="ifRoom"/>
 </menu>

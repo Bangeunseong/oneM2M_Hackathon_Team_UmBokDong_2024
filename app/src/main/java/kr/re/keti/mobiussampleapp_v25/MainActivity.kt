@@ -1,16 +1,17 @@
 package kr.re.keti.mobiussampleapp_v25
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.util.Log
 import android.view.Menu
+import android.view.MenuItem
 import android.view.View
-import android.view.inputmethod.InputMethodManager
-import android.widget.CompoundButton
-import android.widget.ToggleButton
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import kr.re.keti.mobiussampleapp_v25.data_objects.AE
 import kr.re.keti.mobiussampleapp_v25.data_objects.ApplicationEntityObject
@@ -38,7 +39,7 @@ import java.util.logging.Level
 import java.util.logging.Logger
 
 // TODO: WorkManager를 이용한 MQTT connection 열기 및 데이터 Retrieve(비동기적 데이터 가져오기 위함) -> Trigger Theft Notification
-class MainActivity : AppCompatActivity(), View.OnClickListener, CompoundButton.OnCheckedChangeListener {
+class MainActivity : AppCompatActivity() {
     // Field
     private var _binding: ActivityMainBinding? = null
     var handler: Handler = Handler()
@@ -51,18 +52,30 @@ class MainActivity : AppCompatActivity(), View.OnClickListener, CompoundButton.O
     private var Mobius_Address = ""
     private val binding get() = _binding!!
 
+    private val addDeviceLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()){ result ->
+        if(result.resultCode == RESULT_OK){
+
+        } else{
+
+        }
+    }
+
     /* onCreate */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         _binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        binding.toolbar.setTitle("기기")
-        binding.toolbar.setTitleTextAppearance(this@MainActivity, R.style.ToolbarTextAppearance)
+        binding.toolbar.setTitle("Devices")
         setSupportActionBar(binding.toolbar)
-        // Create AE and Get AEID
-        // GetAEInfo();
+        supportActionBar?.setDisplayHomeAsUpEnabled(true)
+        binding.toolbar.navigationIcon?.mutate().let { icon ->
+            icon?.setTint(Color.BLACK)
+            binding.toolbar.navigationIcon = icon
+        }
 
+        // Create AE and Get AEID
+        GetAEInfo()
     }
 
     override fun onDestroy() {
@@ -71,16 +84,31 @@ class MainActivity : AppCompatActivity(), View.OnClickListener, CompoundButton.O
         _binding = null
     }
 
-    override fun onPrepareOptionsMenu(menu: Menu?): Boolean {
+    override fun onCreateOptionsMenu(menu: Menu?): Boolean {
         menuInflater.inflate(R.menu.menu_device, menu)
-        return super.onPrepareOptionsMenu(menu)
+        return super.onCreateOptionsMenu(menu)
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        return when(item.itemId){
+            android.R.id.home -> {
+                finish()
+                true
+            }
+            R.id.menu_add -> {
+                val intent = Intent(this@MainActivity, AddDeviceActivity::class.java)
+                addDeviceLauncher.launch(intent)
+                true
+            }
+            else -> super.onOptionsItemSelected(item)
+        }
     }
 
     /* AE Create for Android AE */
     fun GetAEInfo() {
-        Mobius_Address = "192.168.55.35"
+        Mobius_Address = "172.30.128.1"
 
-        csebase.setInfo(Mobius_Address, "7579", "Mobius", "1883")
+        csebase.setInfo(Mobius_Address, "7579", "Mobius", MQTTPort)
 
         //csebase.setInfo("203.253.128.151","7579","Mobius","1883");
         // AE Create for Android AE
@@ -118,19 +146,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener, CompoundButton.O
         aeCreate.start()
     }
 
-
-
-    /* Switch - Get Co2 Data With MQTT */
-    override fun onCheckedChanged(buttonView: CompoundButton, isChecked: Boolean) {
-        if (isChecked) {
-            Log.d(TAG, "MQTT Create")
-            MQTT_Create(true)
-        } else {
-            Log.d(TAG, "MQTT Close")
-            MQTT_Create(false)
-        }
-    }
-
+    // --- MQTT Functions ---
     /* MQTT Subscription */
     fun MQTT_Create(mtqqStart: Boolean) {
         if (mtqqStart && mqttClient == null) {
@@ -226,11 +242,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener, CompoundButton.O
         }
     }
 
-    override fun onClick(v: View) {
-        when (v.id) {
-        }
-    }
-
+    // onStart -> Check Permission
     public override fun onStart() {
         super.onStart()
 
@@ -255,7 +267,8 @@ class MainActivity : AppCompatActivity(), View.OnClickListener, CompoundButton.O
         fun getResponseBody(msg: String)
     }
 
-    /* Retrieve Co2 Sensor */
+    // --- Retrieve Actions ---
+    /* Retrieve Sensor Data */
     internal inner class RetrieveRequest : Thread {
         private val LOG: Logger = Logger.getLogger(
             RetrieveRequest::class.java.name
@@ -308,7 +321,9 @@ class MainActivity : AppCompatActivity(), View.OnClickListener, CompoundButton.O
             }
         }
     }
+    // -----------------------
 
+    // --- Control Actions ---
     /* Request Control LED */
     internal inner class ControlRequest(comm: String) : Thread() {
         private val LOG: Logger = Logger.getLogger(
@@ -347,7 +362,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener, CompoundButton.O
                 conn.setRequestProperty("X-M2M-Origin", ae.aEid)
 
                 val reqContent = contentinstance.makeXML()
-                conn.setRequestProperty("Content-Length", reqContent!!.length.toString())
+                conn.setRequestProperty("Content-Length", reqContent.length.toString())
 
                 val dos = DataOutputStream(conn.outputStream)
                 dos.write(reqContent.toByteArray())
@@ -370,7 +385,9 @@ class MainActivity : AppCompatActivity(), View.OnClickListener, CompoundButton.O
             }
         }
     }
+    // ----------------------
 
+    // --- AE Actions (CR) ---
     /* Request AE Creation */
     internal inner class aeCreateRequest : Thread() {
         private val LOG: Logger = Logger.getLogger(
@@ -408,7 +425,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener, CompoundButton.O
                 conn.setRequestProperty("X-M2M-NM", ae.getappName())
 
                 val reqXml = applicationEntity.makeXML()
-                conn.setRequestProperty("Content-Length", reqXml!!.length.toString())
+                conn.setRequestProperty("Content-Length", reqXml.length.toString())
 
                 val dos = DataOutputStream(conn.outputStream)
                 dos.write(reqXml.toByteArray())
@@ -502,7 +519,9 @@ class MainActivity : AppCompatActivity(), View.OnClickListener, CompoundButton.O
             }
         }
     }
+    // -----------------------
 
+    // --- Subscription Actions ---
     /* Subscribe Co2 Content Resource */
     internal inner class SubscribeResource : Thread() {
         private val LOG: Logger = Logger.getLogger(
@@ -568,6 +587,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener, CompoundButton.O
             }
         }
     }
+    // ----------------------------
 
     companion object {
         private val csebase = CSEBase()
