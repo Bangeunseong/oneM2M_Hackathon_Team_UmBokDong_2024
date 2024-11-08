@@ -10,8 +10,8 @@ import android.os.Handler
 import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
-import android.view.View
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import kr.re.keti.mobiussampleapp_v25.data_objects.AE
 import kr.re.keti.mobiussampleapp_v25.data_objects.ApplicationEntityObject
@@ -30,6 +30,7 @@ import org.eclipse.paho.client.mqttv3.MqttCallback
 import org.eclipse.paho.client.mqttv3.MqttClient
 import org.eclipse.paho.client.mqttv3.MqttException
 import org.eclipse.paho.client.mqttv3.MqttMessage
+import timber.log.Timber
 import java.io.BufferedReader
 import java.io.DataOutputStream
 import java.io.InputStreamReader
@@ -38,25 +39,33 @@ import java.net.URL
 import java.util.logging.Level
 import java.util.logging.Logger
 
-// TODO: WorkManager를 이용한 MQTT connection 열기 및 데이터 Retrieve(비동기적 데이터 가져오기 위함) -> Trigger Theft Notification
+// TODO: 현재 Subscription 한 기기들의 정보를 받아와서 viewModel.mutableDeviceList에 저장하는 것이 필요
 class MainActivity : AppCompatActivity() {
     // Field
     private var _binding: ActivityMainBinding? = null
+    private val binding get() = _binding!!
     var handler: Handler = Handler()
 
     private val MQTTPort = "1883"
-    private val ServiceAEName = "ae-edu1"
     private var MQTT_Req_Topic = ""
     private var MQTT_Resp_Topic = ""
     private var mqttClient: MqttAndroidClient? = null
     private var Mobius_Address = ""
-    private val binding get() = _binding!!
+
+    private val viewModel: MainViewModel by viewModels()
 
     private val addDeviceLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()){ result ->
         if(result.resultCode == RESULT_OK){
-
+            val serviceAEBundle = result.data ?: return@registerForActivityResult
+            Log.d(TAG,"Bundle Found")
+            val serviceAE = serviceAEBundle.getStringExtra("SERVICE_AE") ?: return@registerForActivityResult
+            Log.d(TAG, "Data Found: ${serviceAE}")
+            val newAE = AE()
+            newAE.setAppName(serviceAE)
+            viewModel.mutableDeviceList.add(newAE)
+            viewModel.addServiceAE(serviceAE)
         } else{
-
+            Log.d(TAG,"Registration Canceled")
         }
     }
 
@@ -78,6 +87,27 @@ class MainActivity : AppCompatActivity() {
         GetAEInfo()
     }
 
+    // onStart -> Check Permission
+    public override fun onStart() {
+        super.onStart()
+
+        if(checkSelfPermission(FILE_INTEGRITY_SERVICE) == PackageManager.PERMISSION_DENIED ||
+            checkSelfPermission(NOTIFICATION_SERVICE) == PackageManager.PERMISSION_DENIED){
+            if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU){
+                requestPermissions(arrayOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION,
+                    Manifest.permission.SCHEDULE_EXACT_ALARM,
+                    Manifest.permission.USE_EXACT_ALARM),101)
+            }
+        }
+    }
+
+    public override fun onStop() {
+        super.onStop()
+
+    }
+
     override fun onDestroy() {
         super.onDestroy()
 
@@ -92,12 +122,19 @@ class MainActivity : AppCompatActivity() {
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         return when(item.itemId){
             android.R.id.home -> {
+                MQTT_Create(false,"tmp_01")
                 finish()
                 true
             }
             R.id.menu_add -> {
-                val intent = Intent(this@MainActivity, AddDeviceActivity::class.java)
+                val intent = Intent(this@MainActivity, DeviceAddActivity::class.java)
                 addDeviceLauncher.launch(intent)
+                true
+            }
+            R.id.menu_notify -> {
+                for(ae in viewModel.mutableDeviceList){
+                    MQTT_Create(true, ae.applicationName)
+                }
                 true
             }
             else -> super.onOptionsItemSelected(item)
@@ -106,7 +143,7 @@ class MainActivity : AppCompatActivity() {
 
     /* AE Create for Android AE */
     fun GetAEInfo() {
-        Mobius_Address = "172.30.128.1"
+        Mobius_Address = "192.168.55.35"
 
         csebase.setInfo(Mobius_Address, "7579", "Mobius", MQTTPort)
 
@@ -148,10 +185,10 @@ class MainActivity : AppCompatActivity() {
 
     // --- MQTT Functions ---
     /* MQTT Subscription */
-    fun MQTT_Create(mtqqStart: Boolean) {
+    fun MQTT_Create(mtqqStart: Boolean, serviceAEName: String) {
         if (mtqqStart && mqttClient == null) {
             /* Subscription Resource Create to Yellow Turtle */
-            val subcribeResource = SubscribeResource()
+            val subcribeResource = SubscribeResource(serviceAEName)
             subcribeResource.setReceiver(object : IReceived {
                 override fun getResponseBody(msg: String) {
                     handler.post {
@@ -177,7 +214,8 @@ class MainActivity : AppCompatActivity() {
         } else {
             /* MQTT unSubscribe or Client Close */
             // mqttClient!!.setCallback(null)
-            mqttClient!!.close()
+            if(mqttClient != null)
+                mqttClient!!.disconnect()
             mqttClient = null
         }
     }
@@ -241,26 +279,7 @@ class MainActivity : AppCompatActivity() {
             Log.d(TAG, "deliveryComplete")
         }
     }
-
-    // onStart -> Check Permission
-    public override fun onStart() {
-        super.onStart()
-
-        if(checkSelfPermission(FILE_INTEGRITY_SERVICE) == PackageManager.PERMISSION_DENIED ||
-            checkSelfPermission(NOTIFICATION_SERVICE) == PackageManager.PERMISSION_DENIED){
-            if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU){
-                requestPermissions(arrayOf(
-                    Manifest.permission.ACCESS_FINE_LOCATION,
-                    Manifest.permission.ACCESS_COARSE_LOCATION,
-                    Manifest.permission.SCHEDULE_EXACT_ALARM,
-                    Manifest.permission.USE_EXACT_ALARM),101)
-            }
-        }
-    }
-
-    public override fun onStop() {
-        super.onStop()
-    }
+    // ----------------------
 
     /* Response callback Interface */
     interface IReceived {
@@ -275,9 +294,11 @@ class MainActivity : AppCompatActivity() {
         )
         private var receiver: IReceived? = null
         private var ContainerName = "cnt-co2"
+        private var serviceAEName = ""
 
-        constructor(containerName: String) {
+        constructor(containerName: String, serviceAEName: String) {
             this.ContainerName = containerName
+            this.serviceAEName = serviceAEName
         }
 
         constructor()
@@ -289,7 +310,7 @@ class MainActivity : AppCompatActivity() {
         override fun run() {
             try {
                 val sb =
-                    csebase.serviceUrl + "/" + ServiceAEName + "/" + ContainerName + "/" + "latest"
+                    csebase.serviceUrl + "/" + serviceAEName + "/" + ContainerName + "/" + "latest"
 
                 val mUrl = URL(sb)
 
@@ -325,17 +346,20 @@ class MainActivity : AppCompatActivity() {
 
     // --- Control Actions ---
     /* Request Control LED */
-    internal inner class ControlRequest(comm: String) : Thread() {
+    internal inner class ControlRequest(serviceAEName: String, containerName: String, comm: String) : Thread() {
         private val LOG: Logger = Logger.getLogger(
             ControlRequest::class.java.name
         )
         private var receiver: IReceived? = null
-        private val container_name = "cnt-led"
+        private var containerName = ""
+        private var serviceAEName = ""
 
-        var contentinstance: ContentInstanceObject = ContentInstanceObject()
+        var contentInstance: ContentInstanceObject = ContentInstanceObject()
 
         init {
-            contentinstance.setContent(comm)
+            this.containerName = containerName
+            this.serviceAEName = serviceAEName
+            contentInstance.setContent(comm)
         }
 
         fun setReceiver(hanlder: IReceived?) {
@@ -344,7 +368,7 @@ class MainActivity : AppCompatActivity() {
 
         override fun run() {
             try {
-                val sb = csebase.serviceUrl + "/" + ServiceAEName + "/" + container_name
+                val sb = csebase.serviceUrl + "/" + serviceAEName + "/" + containerName
 
                 val mUrl = URL(sb)
 
@@ -361,7 +385,7 @@ class MainActivity : AppCompatActivity() {
                 conn.setRequestProperty("X-M2M-RI", "12345")
                 conn.setRequestProperty("X-M2M-Origin", ae.aEid)
 
-                val reqContent = contentinstance.makeXML()
+                val reqContent = contentInstance.makeXML()
                 conn.setRequestProperty("Content-Length", reqContent.length.toString())
 
                 val dos = DataOutputStream(conn.outputStream)
@@ -486,7 +510,7 @@ class MainActivity : AppCompatActivity() {
 
                 conn.setRequestProperty("Accept", "application/xml")
                 conn.setRequestProperty("X-M2M-RI", "12345")
-                conn.setRequestProperty("X-M2M-Origin", "Sandoroid")
+                conn.setRequestProperty("X-M2M-Origin", "Sandroid")
                 conn.setRequestProperty("nmtype", "short")
                 conn.connect()
 
@@ -523,12 +547,12 @@ class MainActivity : AppCompatActivity() {
 
     // --- Subscription Actions ---
     /* Subscribe Co2 Content Resource */
-    internal inner class SubscribeResource : Thread() {
+    internal inner class SubscribeResource(private val serviceAEName: String) : Thread() {
         private val LOG: Logger = Logger.getLogger(
             SubscribeResource::class.java.name
         )
         private var receiver: IReceived? = null
-        private val container_name = "cnt-co2" //change to control container name
+        private val container_name = "DATA" //change to control container name
 
         var subscribeInstance: ContentSubscribeObject = ContentSubscribeObject()
 
@@ -545,7 +569,7 @@ class MainActivity : AppCompatActivity() {
 
         override fun run() {
             try {
-                val sb = csebase.serviceUrl + "/" + ServiceAEName + "/" + container_name
+                val sb = csebase.serviceUrl + "/" + serviceAEName + "/" + container_name
 
                 val mUrl = URL(sb)
 

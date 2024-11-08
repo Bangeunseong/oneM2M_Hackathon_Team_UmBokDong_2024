@@ -11,4 +11,6 @@
         android:icon="@drawable/icon_minus_round"
         android:iconTint="@color/colorPrimaryDark"
         app:showAsAction="ifRoom"/>
+    <item android:id="@+id/menu_notify"
+        android:title="Get Notification" />
 </menu>

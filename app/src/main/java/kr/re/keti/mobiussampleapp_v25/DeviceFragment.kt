@@ -6,17 +6,12 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.activityViewModels
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.google.android.material.tabs.TabLayout
 import kr.re.keti.mobiussampleapp_v25.data_objects.AE
 import kr.re.keti.mobiussampleapp_v25.databinding.FragmentDevicesBinding
 import kr.re.keti.mobiussampleapp_v25.databinding.ItemRecyclerDeviceBinding
-import java.util.ArrayList
-
-// the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
-private const val NET_ADDR_PARAM = "networkAddress"
-private const val PAGE_NAME = "기기"
 
 class DeviceFragment : Fragment() {
     // Inner Class For Decorating Recycler View of Device List
@@ -36,8 +31,9 @@ class DeviceFragment : Fragment() {
             }
         }
     }
+
     // Inner Class For Setting Adapter in Device Recycler View
-    inner class DeviceAdapter(private val deviceList: ArrayList<AE>) : RecyclerView.Adapter<DeviceAdapter.ViewHolder>() {
+    inner class DeviceAdapter(private val deviceList: MutableList<AE>) : RecyclerView.Adapter<DeviceAdapter.ViewHolder>() {
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
             return ViewHolder(ItemRecyclerDeviceBinding.inflate(LayoutInflater.from(parent.context), parent, false))
         }
@@ -50,31 +46,31 @@ class DeviceFragment : Fragment() {
             return deviceList.size
         }
 
-        fun onDataChanged(deviceList: List<AE>){
-            this.deviceList.clear()
-            deviceList.stream().forEach { this.deviceList.add(it) }
-            notifyDataSetChanged()
+        fun addData(){
+            notifyItemInserted(viewModel.mutableDeviceList.lastIndex)
         }
 
         inner class ViewHolder(val binding: ItemRecyclerDeviceBinding): RecyclerView.ViewHolder(binding.root) {
             fun bind(){
-                binding.deviceName.text = deviceList[itemCount].applicationName
+                binding.deviceName.text = deviceList[layoutPosition].applicationName
                 binding.deviceStatus.text = "등록됨"
             }
         }
     }
 
     // Field for this fragment
-    private var networkAddress: String? = null
     private var _binding: FragmentDevicesBinding? = null
-
     private val binding get() = _binding!!
+    private var _adapter: DeviceAdapter? = null
+    private val adapter get() = _adapter!!
 
-    // onCreate -> Declare important arguments
+    private val viewModel: MainViewModel by activityViewModels()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        arguments?.let {
-            networkAddress = it.getString(NET_ADDR_PARAM)
+        _adapter = DeviceAdapter(viewModel.mutableDeviceList)
+        viewModel.addedServiceAEName.observe(this) {
+            adapter.addData()
         }
     }
 
@@ -90,19 +86,15 @@ class DeviceFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         binding.deviceRecyclerView.setHasFixedSize(false)
-        binding.deviceRecyclerView.adapter = DeviceAdapter(ArrayList())
+        binding.deviceRecyclerView.adapter = adapter
         binding.deviceRecyclerView.layoutManager = GridLayoutManager(context, 2)
         binding.deviceRecyclerView.addItemDecoration(ItemPadding(3,3))
     }
 
-    // Need for Fragment Declaration in main activity
-    companion object {
-        @JvmStatic
-        fun newInstance(networkAddress: String) =
-            DeviceFragment().apply {
-                arguments = Bundle().apply {
-                    putString(NET_ADDR_PARAM, networkAddress)
-                }
-            }
+    override fun onDestroy() {
+        super.onDestroy()
+
+        _binding = null
+        _adapter = null
     }
 }
