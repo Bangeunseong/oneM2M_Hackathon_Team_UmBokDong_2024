@@ -1,4 +1,4 @@
-package kr.re.keti.mobiussampleapp_v25
+package kr.re.keti.mobiussampleapp_v25.layouts
 
 import android.graphics.Rect
 import android.os.Bundle
@@ -9,11 +9,11 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import kr.re.keti.mobiussampleapp_v25.data_objects.AE
-import kr.re.keti.mobiussampleapp_v25.databinding.FragmentDevicesBinding
+import kr.re.keti.mobiussampleapp_v25.data.AE
+import kr.re.keti.mobiussampleapp_v25.databinding.FragmentDeviceListBinding
 import kr.re.keti.mobiussampleapp_v25.databinding.ItemRecyclerDeviceBinding
 
-class DeviceFragment : Fragment() {
+class DeviceListFragment : Fragment() {
     // Inner Class For Decorating Recycler View of Device List
     internal inner class ItemPadding(private val divWidth: Int?, private val divHeight: Int?) : RecyclerView.ItemDecoration() {
         override fun getItemOffsets(
@@ -39,7 +39,7 @@ class DeviceFragment : Fragment() {
         }
 
         override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-            holder.bind()
+            holder.bind(deviceList[position])
         }
 
         override fun getItemCount(): Int {
@@ -51,15 +51,15 @@ class DeviceFragment : Fragment() {
         }
 
         inner class ViewHolder(val binding: ItemRecyclerDeviceBinding): RecyclerView.ViewHolder(binding.root) {
-            fun bind(){
-                binding.deviceName.text = deviceList[layoutPosition].applicationName
+            fun bind(device: AE){
+                binding.deviceName.text = device.applicationName
                 binding.deviceStatus.text = "등록됨"
             }
         }
     }
 
     // Field for this fragment
-    private var _binding: FragmentDevicesBinding? = null
+    private var _binding: FragmentDeviceListBinding? = null
     private val binding get() = _binding!!
     private var _adapter: DeviceAdapter? = null
     private val adapter get() = _adapter!!
@@ -77,7 +77,7 @@ class DeviceFragment : Fragment() {
     // onCreateView -> Declare layout
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         // Inflate the layout for this fragment
-        _binding = FragmentDevicesBinding.inflate(inflater, container, false)
+        _binding = FragmentDeviceListBinding.inflate(inflater, container, false)
         return binding.root
     }
 
@@ -87,8 +87,8 @@ class DeviceFragment : Fragment() {
 
         binding.deviceRecyclerView.setHasFixedSize(false)
         binding.deviceRecyclerView.adapter = adapter
-        binding.deviceRecyclerView.layoutManager = GridLayoutManager(context, 2)
-        binding.deviceRecyclerView.addItemDecoration(ItemPadding(3,3))
+        binding.deviceRecyclerView.layoutManager = GridLayoutManager(context, 2, RecyclerView.VERTICAL, false)
+        binding.deviceRecyclerView.addItemDecoration(ItemPadding(5,5))
     }
 
     override fun onDestroy() {

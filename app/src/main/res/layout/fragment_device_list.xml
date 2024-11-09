@@ -4,19 +4,24 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".DeviceFragment">
+    tools:context=".layouts.DeviceListFragment">
 
     <LinearLayout
         android:id="@+id/device_layout"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:orientation="vertical"
-        android:background="@color/colorPrimary">
+        android:background="@color/colorPrimary"
+        android:gravity="center_horizontal"
+        android:paddingHorizontal="10dp"
+        android:foregroundGravity="center_horizontal">
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/device_recycler_view"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content" />
+            android:layout_height="wrap_content"
+            android:layout_marginTop="15dp"
+            android:layout_gravity="center_horizontal"/>
     </LinearLayout>
 
 

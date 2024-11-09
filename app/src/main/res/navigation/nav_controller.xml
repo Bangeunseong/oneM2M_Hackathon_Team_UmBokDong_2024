@@ -3,11 +3,24 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/nav_controller"
-    app:startDestination="@id/deviceFragment">
+    app:startDestination="@id/deviceListFragment">
 
     <fragment
-        android:id="@+id/deviceFragment"
-        android:name="kr.re.keti.mobiussampleapp_v25.DeviceFragment"
-        android:label="DeviceFragment"
-        tools:layout="@layout/fragment_devices"/>
+        android:id="@+id/deviceListFragment"
+        android:name="kr.re.keti.mobiussampleapp_v25.layouts.DeviceListFragment"
+        android:label="Devices"
+        tools:layout="@layout/fragment_device_list">
+        <action
+            android:id="@+id/action_deviceFragment_to_deviceMonitorFragment"
+            app:destination="@id/deviceMonitorFragment" />
+    </fragment>
+    <fragment
+        android:id="@+id/deviceMonitorFragment"
+        android:name="kr.re.keti.mobiussampleapp_v25.layouts.DeviceMonitorFragment"
+        android:label="Monitor"
+        tools:layout="@layout/fragment_device_monitor">
+        <action
+            android:id="@+id/action_deviceMonitorFragment_to_deviceFragment"
+            app:destination="@id/deviceListFragment" />
+    </fragment>
 </navigation>

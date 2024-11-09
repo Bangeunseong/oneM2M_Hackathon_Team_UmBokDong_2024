@@ -1,12 +1,12 @@
-package kr.re.keti.mobiussampleapp_v25
+package kr.re.keti.mobiussampleapp_v25.layouts
 
-import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
 import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
 import androidx.appcompat.app.AppCompatActivity
+import kr.re.keti.mobiussampleapp_v25.R
 import kr.re.keti.mobiussampleapp_v25.databinding.ActivityAddDeviceBinding
 import kr.re.keti.mobiussampleapp_v25.utils.AddListener
 

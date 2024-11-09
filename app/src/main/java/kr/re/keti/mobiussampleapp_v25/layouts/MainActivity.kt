@@ -1,9 +1,8 @@
-package kr.re.keti.mobiussampleapp_v25
+package kr.re.keti.mobiussampleapp_v25.layouts
 
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
@@ -13,16 +12,24 @@ import android.view.MenuItem
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
-import kr.re.keti.mobiussampleapp_v25.data_objects.AE
-import kr.re.keti.mobiussampleapp_v25.data_objects.ApplicationEntityObject
-import kr.re.keti.mobiussampleapp_v25.data_objects.CSEBase
-import kr.re.keti.mobiussampleapp_v25.data_objects.ContentInstanceObject
-import kr.re.keti.mobiussampleapp_v25.data_objects.ContentSubscribeObject
+import androidx.navigation.NavController
+import androidx.navigation.NavDestination
+import androidx.navigation.fragment.NavHostFragment
+import androidx.navigation.ui.AppBarConfiguration
+import androidx.navigation.ui.setupWithNavController
+import com.google.android.material.navigation.NavigationBarView
+import kr.re.keti.mobiussampleapp_v25.data.AE
+import kr.re.keti.mobiussampleapp_v25.data.ApplicationEntityObject
+import kr.re.keti.mobiussampleapp_v25.data.CSEBase
+import kr.re.keti.mobiussampleapp_v25.data.ContentInstanceObject
+import kr.re.keti.mobiussampleapp_v25.data.ContentSubscribeObject
 import kr.re.keti.mobiussampleapp_v25.databinding.ActivityMainBinding
 import kr.re.keti.mobiussampleapp_v25.utils.MqttClientRequest
 import kr.re.keti.mobiussampleapp_v25.utils.MqttClientRequestParser
 import kr.re.keti.mobiussampleapp_v25.utils.ParseElementXml
 import info.mqtt.android.service.MqttAndroidClient
+import kr.re.keti.mobiussampleapp_v25.R
+import kr.re.keti.mobiussampleapp_v25.database.RegisteredAEDatabase
 import org.eclipse.paho.client.mqttv3.IMqttActionListener
 import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken
 import org.eclipse.paho.client.mqttv3.IMqttToken
@@ -30,7 +37,6 @@ import org.eclipse.paho.client.mqttv3.MqttCallback
 import org.eclipse.paho.client.mqttv3.MqttClient
 import org.eclipse.paho.client.mqttv3.MqttException
 import org.eclipse.paho.client.mqttv3.MqttMessage
-import timber.log.Timber
 import java.io.BufferedReader
 import java.io.DataOutputStream
 import java.io.InputStreamReader
@@ -44,7 +50,17 @@ class MainActivity : AppCompatActivity() {
     // Field
     private var _binding: ActivityMainBinding? = null
     private val binding get() = _binding!!
-    var handler: Handler = Handler()
+    private var _navHostFragment: NavHostFragment? = null
+    private val navHostFragment get() = _navHostFragment!!
+    private var _navController: NavController? = null
+    private val navController get() = _navController!!
+    private var _appBarConfiguration: AppBarConfiguration? = null
+    private val appBarConfiguration get() = _appBarConfiguration!!
+    private lateinit var db: RegisteredAEDatabase
+
+
+
+    private var handler: Handler = Handler()
 
     private val MQTTPort = "1883"
     private var MQTT_Req_Topic = ""
@@ -69,22 +85,58 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    internal inner class ItemSelectionListener : NavigationBarView.OnItemSelectedListener {
+        override fun onNavigationItemSelected(item: MenuItem): Boolean {
+            val currentFragmentId = navController.currentDestination!!.id
+            if (item.itemId == R.id.menu_device) {
+                when (currentFragmentId){
+                    R.id.deviceMonitorFragment -> navController.navigate(R.id.action_deviceMonitorFragment_to_deviceFragment)
+                }
+            } else if (item.itemId == R.id.menu_monitor) {
+                when (currentFragmentId){
+                    R.id.deviceListFragment -> navController.navigate(R.id.action_deviceFragment_to_deviceMonitorFragment)
+                }
+            }
+            return true
+        }
+    }
+
+    internal inner class DestinationChangedListener : NavController.OnDestinationChangedListener{
+        override fun onDestinationChanged(
+            controller: NavController,
+            destination: NavDestination,
+            arguments: Bundle?
+        ) {
+            when(destination.id){
+                R.id.deviceListFragment -> {
+                    binding.menuBottomNavigation.menu.findItem(R.id.menu_device).isChecked = true
+                }
+                R.id.deviceMonitorFragment -> {
+                    binding.menuBottomNavigation.menu.findItem(R.id.menu_monitor).isChecked = true
+                }
+            }
+        }
+
+    }
+
     /* onCreate */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         _binding = ActivityMainBinding.inflate(layoutInflater)
+        _navHostFragment = supportFragmentManager.findFragmentById(R.id.fragmentContainerView) as NavHostFragment?
+        _navController = navHostFragment.navController
+        _appBarConfiguration = AppBarConfiguration(navController.graph)
+        db = RegisteredAEDatabase.getInstance(applicationContext)!!
+
+        navController.addOnDestinationChangedListener(DestinationChangedListener())
+        binding.menuBottomNavigation.setOnItemSelectedListener(ItemSelectionListener())
+        binding.mainCollapsingToolbarLayout.setupWithNavController(binding.toolbar,navController,appBarConfiguration)
+
+        setSupportActionBar(binding.toolbar)
         setContentView(binding.root)
 
-        binding.toolbar.setTitle("Devices")
-        setSupportActionBar(binding.toolbar)
-        supportActionBar?.setDisplayHomeAsUpEnabled(true)
-        binding.toolbar.navigationIcon?.mutate().let { icon ->
-            icon?.setTint(Color.BLACK)
-            binding.toolbar.navigationIcon = icon
-        }
-
         // Create AE and Get AEID
-        GetAEInfo()
+        getAEInfo()
     }
 
     // onStart -> Check Permission
@@ -112,6 +164,9 @@ class MainActivity : AppCompatActivity() {
         super.onDestroy()
 
         _binding = null
+        _navController = null
+        _navHostFragment = null
+        _appBarConfiguration = null
     }
 
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
@@ -122,7 +177,9 @@ class MainActivity : AppCompatActivity() {
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         return when(item.itemId){
             android.R.id.home -> {
-                MQTT_Create(false,"tmp_01")
+                for(ae in viewModel.mutableDeviceList){
+                    createMQTT(false, ae.applicationName)
+                }
                 finish()
                 true
             }
@@ -133,7 +190,7 @@ class MainActivity : AppCompatActivity() {
             }
             R.id.menu_notify -> {
                 for(ae in viewModel.mutableDeviceList){
-                    MQTT_Create(true, ae.applicationName)
+                    createMQTT(true, ae.applicationName)
                 }
                 true
             }
@@ -142,7 +199,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     /* AE Create for Android AE */
-    fun GetAEInfo() {
+    private fun getAEInfo() {
         Mobius_Address = "192.168.55.35"
 
         csebase.setInfo(Mobius_Address, "7579", "Mobius", MQTTPort)
@@ -185,8 +242,8 @@ class MainActivity : AppCompatActivity() {
 
     // --- MQTT Functions ---
     /* MQTT Subscription */
-    fun MQTT_Create(mtqqStart: Boolean, serviceAEName: String) {
-        if (mtqqStart && mqttClient == null) {
+    private fun createMQTT(mqttStart: Boolean, serviceAEName: String) {
+        if (mqttStart && mqttClient == null) {
             /* Subscription Resource Create to Yellow Turtle */
             val subcribeResource = SubscribeResource(serviceAEName)
             subcribeResource.setReceiver(object : IReceived {
@@ -219,7 +276,6 @@ class MainActivity : AppCompatActivity() {
             mqttClient = null
         }
     }
-
     /* MQTT Listener */
     private val mainIMqttActionListener: IMqttActionListener = object : IMqttActionListener {
         override fun onSuccess(asyncActionToken: IMqttToken) {
@@ -239,7 +295,6 @@ class MainActivity : AppCompatActivity() {
             Log.d(TAG, "onFailure")
         }
     }
-
     /* MQTT Broker Message Received */
     private val mainMqttCallback: MqttCallback = object : MqttCallback {
         override fun connectionLost(cause: Throwable) {

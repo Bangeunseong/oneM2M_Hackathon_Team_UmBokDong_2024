@@ -1,7 +1,5 @@
-package kr.re.keti.mobiussampleapp_v25
+package kr.re.keti.mobiussampleapp_v25.layouts
 
-import android.app.Dialog
-import android.content.Context
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
