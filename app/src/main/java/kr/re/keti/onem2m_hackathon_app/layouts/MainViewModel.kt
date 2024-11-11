@@ -1,9 +1,9 @@
-package kr.re.keti.mobiussampleapp_v25.layouts
+package kr.re.keti.onem2m_hackathon_app.layouts
 
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
-import kr.re.keti.mobiussampleapp_v25.data.AE
+import kr.re.keti.onem2m_hackathon_app.data.AE
 
 class MainViewModel: ViewModel() {
     private val mutableServiceAEName = MutableLiveData<String?>()

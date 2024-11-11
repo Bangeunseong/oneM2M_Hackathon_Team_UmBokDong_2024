@@ -1,4 +1,4 @@
-package kr.re.keti.mobiussampleapp_v25.layouts
+package kr.re.keti.onem2m_hackathon_app.layouts
 
 import android.graphics.Rect
 import android.os.Bundle
@@ -9,9 +9,9 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import kr.re.keti.mobiussampleapp_v25.data.AE
-import kr.re.keti.mobiussampleapp_v25.databinding.FragmentDeviceListBinding
-import kr.re.keti.mobiussampleapp_v25.databinding.ItemRecyclerDeviceBinding
+import kr.re.keti.onem2m_hackathon_app.data.AE
+import kr.re.keti.onem2m_hackathon_app.databinding.FragmentDeviceListBinding
+import kr.re.keti.onem2m_hackathon_app.databinding.ItemRecyclerDeviceBinding
 
 class DeviceListFragment : Fragment() {
     // Inner Class For Decorating Recycler View of Device List

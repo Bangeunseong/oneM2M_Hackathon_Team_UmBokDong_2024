@@ -7,7 +7,7 @@
 
     <fragment
         android:id="@+id/deviceListFragment"
-        android:name="kr.re.keti.mobiussampleapp_v25.layouts.DeviceListFragment"
+        android:name="kr.re.keti.onem2m_hackathon_app.layouts.DeviceListFragment"
         android:label="Devices"
         tools:layout="@layout/fragment_device_list">
         <action
@@ -16,7 +16,7 @@
     </fragment>
     <fragment
         android:id="@+id/deviceMonitorFragment"
-        android:name="kr.re.keti.mobiussampleapp_v25.layouts.DeviceMonitorFragment"
+        android:name="kr.re.keti.onem2m_hackathon_app.layouts.DeviceMonitorFragment"
         android:label="Monitor"
         tools:layout="@layout/fragment_device_monitor">
         <action

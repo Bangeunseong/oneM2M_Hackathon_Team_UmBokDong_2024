@@ -1,4 +1,4 @@
-package kr.re.keti.mobiussampleapp_v25.layouts
+package kr.re.keti.onem2m_hackathon_app.layouts
 
 import android.Manifest
 import android.content.Intent
@@ -18,18 +18,18 @@ import androidx.navigation.fragment.NavHostFragment
 import androidx.navigation.ui.AppBarConfiguration
 import androidx.navigation.ui.setupWithNavController
 import com.google.android.material.navigation.NavigationBarView
-import kr.re.keti.mobiussampleapp_v25.data.AE
-import kr.re.keti.mobiussampleapp_v25.data.ApplicationEntityObject
-import kr.re.keti.mobiussampleapp_v25.data.CSEBase
-import kr.re.keti.mobiussampleapp_v25.data.ContentInstanceObject
-import kr.re.keti.mobiussampleapp_v25.data.ContentSubscribeObject
-import kr.re.keti.mobiussampleapp_v25.databinding.ActivityMainBinding
-import kr.re.keti.mobiussampleapp_v25.utils.MqttClientRequest
-import kr.re.keti.mobiussampleapp_v25.utils.MqttClientRequestParser
-import kr.re.keti.mobiussampleapp_v25.utils.ParseElementXml
+import kr.re.keti.onem2m_hackathon_app.data.AE
+import kr.re.keti.onem2m_hackathon_app.data.ApplicationEntityObject
+import kr.re.keti.onem2m_hackathon_app.data.CSEBase
+import kr.re.keti.onem2m_hackathon_app.data.ContentInstanceObject
+import kr.re.keti.onem2m_hackathon_app.data.ContentSubscribeObject
+import kr.re.keti.onem2m_hackathon_app.databinding.ActivityMainBinding
+import kr.re.keti.onem2m_hackathon_app.utils.MqttClientRequest
+import kr.re.keti.onem2m_hackathon_app.utils.MqttClientRequestParser
+import kr.re.keti.onem2m_hackathon_app.utils.ParseElementXml
 import info.mqtt.android.service.MqttAndroidClient
-import kr.re.keti.mobiussampleapp_v25.R
-import kr.re.keti.mobiussampleapp_v25.database.RegisteredAEDatabase
+import kr.re.keti.onem2m_hackathon_app.R
+import kr.re.keti.onem2m_hackathon_app.database.RegisteredAEDatabase
 import org.eclipse.paho.client.mqttv3.IMqttActionListener
 import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken
 import org.eclipse.paho.client.mqttv3.IMqttToken
@@ -58,8 +58,6 @@ class MainActivity : AppCompatActivity() {
     private val appBarConfiguration get() = _appBarConfiguration!!
     private lateinit var db: RegisteredAEDatabase
 
-
-
     private var handler: Handler = Handler()
 
     private val MQTTPort = "1883"
@@ -70,6 +68,7 @@ class MainActivity : AppCompatActivity() {
 
     private val viewModel: MainViewModel by viewModels()
 
+    // Device Addition Activity Launcher
     private val addDeviceLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()){ result ->
         if(result.resultCode == RESULT_OK){
             val serviceAEBundle = result.data ?: return@registerForActivityResult
@@ -85,6 +84,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    // Need for navigating between fragments
     internal inner class ItemSelectionListener : NavigationBarView.OnItemSelectedListener {
         override fun onNavigationItemSelected(item: MenuItem): Boolean {
             val currentFragmentId = navController.currentDestination!!.id
@@ -100,7 +100,6 @@ class MainActivity : AppCompatActivity() {
             return true
         }
     }
-
     internal inner class DestinationChangedListener : NavController.OnDestinationChangedListener{
         override fun onDestinationChanged(
             controller: NavController,
@@ -540,7 +539,6 @@ class MainActivity : AppCompatActivity() {
             }
         }
     }
-
     /* Retrieve AE-ID */
     internal inner class aeRetrieveRequest : Thread() {
         private val LOG: Logger = Logger.getLogger(
@@ -669,8 +667,8 @@ class MainActivity : AppCompatActivity() {
     // ----------------------------
 
     companion object {
-        private val csebase = CSEBase()
-        private val ae = AE()
+        val csebase = CSEBase()
+        val ae = AE()
         private const val TAG = "MainActivity"
     }
 }

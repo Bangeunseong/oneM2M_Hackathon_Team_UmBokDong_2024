@@ -1,12 +1,12 @@
-package kr.re.keti.mobiussampleapp_v25.layouts
+package kr.re.keti.onem2m_hackathon_app.layouts
 
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.DialogFragment
-import kr.re.keti.mobiussampleapp_v25.databinding.ActivityAddFormatBinding
-import kr.re.keti.mobiussampleapp_v25.utils.AddListener
+import kr.re.keti.onem2m_hackathon_app.databinding.ActivityAddFormatBinding
+import kr.re.keti.onem2m_hackathon_app.utils.AddListener
 
 class SetServiceAEDialog(private val listener: AddListener) : DialogFragment() {
     private var _binding: ActivityAddFormatBinding? = null

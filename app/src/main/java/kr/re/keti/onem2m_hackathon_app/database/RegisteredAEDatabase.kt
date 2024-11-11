@@ -1,4 +1,4 @@
-package kr.re.keti.mobiussampleapp_v25.database
+package kr.re.keti.onem2m_hackathon_app.database
 
 import android.content.Context
 import androidx.room.Database

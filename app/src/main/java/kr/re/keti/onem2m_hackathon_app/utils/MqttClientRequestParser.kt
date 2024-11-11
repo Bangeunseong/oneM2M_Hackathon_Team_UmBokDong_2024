@@ -1,4 +1,4 @@
-package kr.re.keti.mobiussampleapp_v25.utils
+package kr.re.keti.onem2m_hackathon_app.utils
 
 import org.json.JSONObject
 

@@ -1,4 +1,4 @@
-package kr.re.keti.mobiussampleapp_v25.database
+package kr.re.keti.onem2m_hackathon_app.database
 
 import androidx.room.Dao
 import androidx.room.Delete
@@ -6,7 +6,6 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
-import kr.re.keti.mobiussampleapp_v25.data.AE
 
 @Dao
 interface RegisteredAE_DAO {
