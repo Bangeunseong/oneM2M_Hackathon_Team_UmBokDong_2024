@@ -61,7 +61,7 @@ class DeviceMonitorFragment: Fragment() {
             RecyclerView.ViewHolder(binding.root) {
             fun bind(device: AE) {
                 binding.deviceName.text = device.applicationName
-                binding.deviceStatus.text = "¿·±›µ "
+                binding.deviceStatus.text = "Locked"
             }
         }
     }
@@ -75,6 +75,7 @@ class DeviceMonitorFragment: Fragment() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        _adapter = DeviceAdapter(viewModel.mutableDeviceList)
         viewModel.addedServiceAEName.observe(this) {
             adapter.addData()
         }

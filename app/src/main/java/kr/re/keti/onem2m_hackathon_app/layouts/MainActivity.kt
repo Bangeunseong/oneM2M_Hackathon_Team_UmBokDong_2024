@@ -59,6 +59,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var db: RegisteredAEDatabase
 
     private var handler: Handler = Handler()
+    private var mqttState = false
 
     private val MQTTPort = "1883"
     private var MQTT_Req_Topic = ""
@@ -199,7 +200,7 @@ class MainActivity : AppCompatActivity() {
 
     /* AE Create for Android AE */
     private fun getAEInfo() {
-        Mobius_Address = "192.168.55.35"
+        Mobius_Address = "172.30.128.1"
 
         csebase.setInfo(Mobius_Address, "7579", "Mobius", MQTTPort)
 
@@ -283,6 +284,7 @@ class MainActivity : AppCompatActivity() {
             val mqttQos = 1 /* 0: NO QoS, 1: No Check , 2: Each Check */
 
             val message = MqttMessage(payload.toByteArray())
+            Log.d(TAG, "${message}")
             try {
                 mqttClient!!.subscribe(MQTT_Req_Topic, mqttQos)
             } catch (e: MqttException) {

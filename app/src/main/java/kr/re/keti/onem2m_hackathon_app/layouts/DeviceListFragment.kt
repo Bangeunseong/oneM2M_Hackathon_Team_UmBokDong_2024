@@ -53,7 +53,7 @@ class DeviceListFragment : Fragment() {
         inner class ViewHolder(val binding: ItemRecyclerDeviceBinding): RecyclerView.ViewHolder(binding.root) {
             fun bind(device: AE){
                 binding.deviceName.text = device.applicationName
-                binding.deviceStatus.text = "등록됨"
+                binding.deviceStatus.text = "Registered"
             }
         }
     }
