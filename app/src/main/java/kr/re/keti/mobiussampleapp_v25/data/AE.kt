@@ -1,9 +1,9 @@
-package kr.re.keti.onem2m_hackathon_app.data
+package kr.re.keti.mobiussampleapp_v25.data
 
 /**
  * Created by araha on 2016-09-20.
  */
-class AE() {
+class AE {
     var appos: String = ""
     var appId: String = ""
     var aEid: String? = ""

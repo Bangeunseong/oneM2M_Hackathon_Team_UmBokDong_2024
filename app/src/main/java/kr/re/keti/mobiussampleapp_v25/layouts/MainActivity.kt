@@ -1,4 +1,4 @@
-package kr.re.keti.onem2m_hackathon_app.layouts
+package kr.re.keti.mobiussampleapp_v25.layouts
 
 import android.Manifest
 import android.content.Intent
@@ -18,18 +18,18 @@ import androidx.navigation.fragment.NavHostFragment
 import androidx.navigation.ui.AppBarConfiguration
 import androidx.navigation.ui.setupWithNavController
 import com.google.android.material.navigation.NavigationBarView
-import kr.re.keti.onem2m_hackathon_app.data.AE
-import kr.re.keti.onem2m_hackathon_app.data.ApplicationEntityObject
-import kr.re.keti.onem2m_hackathon_app.data.CSEBase
-import kr.re.keti.onem2m_hackathon_app.data.ContentInstanceObject
-import kr.re.keti.onem2m_hackathon_app.data.ContentSubscribeObject
-import kr.re.keti.onem2m_hackathon_app.databinding.ActivityMainBinding
-import kr.re.keti.onem2m_hackathon_app.utils.MqttClientRequest
-import kr.re.keti.onem2m_hackathon_app.utils.MqttClientRequestParser
-import kr.re.keti.onem2m_hackathon_app.utils.ParseElementXml
+import kr.re.keti.mobiussampleapp_v25.data.AE
+import kr.re.keti.mobiussampleapp_v25.data.ApplicationEntityObject
+import kr.re.keti.mobiussampleapp_v25.data.CSEBase
+import kr.re.keti.mobiussampleapp_v25.data.ContentInstanceObject
+import kr.re.keti.mobiussampleapp_v25.data.ContentSubscribeObject
+import kr.re.keti.mobiussampleapp_v25.utils.MqttClientRequest
+import kr.re.keti.mobiussampleapp_v25.utils.MqttClientRequestParser
+import kr.re.keti.mobiussampleapp_v25.utils.ParseElementXml
 import info.mqtt.android.service.MqttAndroidClient
-import kr.re.keti.onem2m_hackathon_app.R
-import kr.re.keti.onem2m_hackathon_app.database.RegisteredAEDatabase
+import kr.re.keti.mobiussampleapp_v25.R
+import kr.re.keti.mobiussampleapp_v25.databinding.ActivityMainBinding
+import kr.re.keti.mobiussampleapp_v25.database.RegisteredAEDatabase
 import org.eclipse.paho.client.mqttv3.IMqttActionListener
 import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken
 import org.eclipse.paho.client.mqttv3.IMqttToken
@@ -59,7 +59,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var db: RegisteredAEDatabase
 
     private var handler: Handler = Handler()
-    private var mqttState = false
 
     private val MQTTPort = "1883"
     private var MQTT_Req_Topic = ""
@@ -200,7 +199,7 @@ class MainActivity : AppCompatActivity() {
 
     /* AE Create for Android AE */
     private fun getAEInfo() {
-        Mobius_Address = "172.30.128.1"
+        Mobius_Address = "192.168.55.35"
 
         csebase.setInfo(Mobius_Address, "7579", "Mobius", MQTTPort)
 
@@ -242,7 +241,7 @@ class MainActivity : AppCompatActivity() {
 
     // --- MQTT Functions ---
     /* MQTT Subscription */
-    private fun createMQTT(mqttStart: Boolean, serviceAEName: String) {
+    fun createMQTT(mqttStart: Boolean, serviceAEName: String) {
         if (mqttStart && mqttClient == null) {
             /* Subscription Resource Create to Yellow Turtle */
             val subcribeResource = SubscribeResource(serviceAEName)
@@ -277,7 +276,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
     /* MQTT Listener */
-    private val mainIMqttActionListener: IMqttActionListener = object : IMqttActionListener {
+    val mainIMqttActionListener: IMqttActionListener = object : IMqttActionListener {
         override fun onSuccess(asyncActionToken: IMqttToken) {
             Log.d(TAG, "onSuccess")
             val payload = ""
@@ -297,7 +296,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
     /* MQTT Broker Message Received */
-    private val mainMqttCallback: MqttCallback = object : MqttCallback {
+    val mainMqttCallback: MqttCallback = object : MqttCallback {
         override fun connectionLost(cause: Throwable) {
             Log.d(TAG, "connectionLost")
         }

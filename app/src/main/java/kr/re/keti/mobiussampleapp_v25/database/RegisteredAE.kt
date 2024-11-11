@@ -1,4 +1,4 @@
-package kr.re.keti.onem2m_hackathon_app.database
+package kr.re.keti.mobiussampleapp_v25.database
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey

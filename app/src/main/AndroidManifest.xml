@@ -20,11 +20,11 @@
         <uses-library android:name="com.google.android.maps" />
 
         <activity
-            android:name=".layouts.DeviceAddActivity"
+            android:name="kr.re.keti.mobiussampleapp_v25.layouts.DeviceAddActivity"
             android:exported="false"
             android:windowSoftInputMode="adjustPan" />
         <activity
-            android:name=".layouts.MainActivity"
+            android:name="kr.re.keti.mobiussampleapp_v25.layouts.MainActivity"
             android:exported="true"
             android:windowSoftInputMode="adjustPan" >
             <intent-filter>

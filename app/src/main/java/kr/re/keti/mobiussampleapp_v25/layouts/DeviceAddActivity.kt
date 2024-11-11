@@ -1,4 +1,4 @@
-package kr.re.keti.onem2m_hackathon_app.layouts
+package kr.re.keti.mobiussampleapp_v25.layouts
 
 import android.graphics.Color
 import android.os.Bundle
@@ -6,9 +6,9 @@ import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
 import androidx.appcompat.app.AppCompatActivity
-import kr.re.keti.onem2m_hackathon_app.R
-import kr.re.keti.onem2m_hackathon_app.databinding.ActivityAddDeviceBinding
-import kr.re.keti.onem2m_hackathon_app.utils.AddListener
+import kr.re.keti.mobiussampleapp_v25.R
+import kr.re.keti.mobiussampleapp_v25.databinding.ActivityAddDeviceBinding
+import kr.re.keti.mobiussampleapp_v25.utils.AddListener
 
 class DeviceAddActivity: AppCompatActivity(), AddListener {
     private var _binding: ActivityAddDeviceBinding? = null

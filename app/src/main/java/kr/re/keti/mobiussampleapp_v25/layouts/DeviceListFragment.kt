@@ -1,4 +1,4 @@
-package kr.re.keti.onem2m_hackathon_app.layouts
+package kr.re.keti.mobiussampleapp_v25.layouts
 
 import android.graphics.Rect
 import android.os.Bundle
@@ -9,12 +9,11 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import kr.re.keti.onem2m_hackathon_app.data.AE
-import kr.re.keti.onem2m_hackathon_app.databinding.FragmentDeviceMonitorBinding
-import kr.re.keti.onem2m_hackathon_app.databinding.ItemRecyclerDeviceBinding
-import kr.re.keti.onem2m_hackathon_app.databinding.ItemRecyclerDeviceMonitorBinding
+import kr.re.keti.mobiussampleapp_v25.data.AE
+import kr.re.keti.mobiussampleapp_v25.databinding.FragmentDeviceListBinding
+import kr.re.keti.mobiussampleapp_v25.databinding.ItemRecyclerDeviceBinding
 
-class DeviceMonitorFragment: Fragment() {
+class DeviceListFragment : Fragment() {
     // Inner Class For Decorating Recycler View of Device List
     internal inner class ItemPadding(private val divWidth: Int?, private val divHeight: Int?) : RecyclerView.ItemDecoration() {
         override fun getItemOffsets(
@@ -36,13 +35,7 @@ class DeviceMonitorFragment: Fragment() {
     // Inner Class For Setting Adapter in Device Recycler View
     inner class DeviceAdapter(private val deviceList: MutableList<AE>) : RecyclerView.Adapter<DeviceAdapter.ViewHolder>() {
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
-            return ViewHolder(
-                ItemRecyclerDeviceMonitorBinding.inflate(
-                    LayoutInflater.from(parent.context),
-                    parent,
-                    false
-                )
-            )
+            return ViewHolder(ItemRecyclerDeviceBinding.inflate(LayoutInflater.from(parent.context), parent, false))
         }
 
         override fun onBindViewHolder(holder: ViewHolder, position: Int) {
@@ -53,24 +46,24 @@ class DeviceMonitorFragment: Fragment() {
             return deviceList.size
         }
 
-        fun addData() {
+        fun addData(){
             notifyItemInserted(viewModel.mutableDeviceList.lastIndex)
         }
 
-        inner class ViewHolder(val binding: ItemRecyclerDeviceMonitorBinding) :
-            RecyclerView.ViewHolder(binding.root) {
-            fun bind(device: AE) {
+        inner class ViewHolder(val binding: ItemRecyclerDeviceBinding): RecyclerView.ViewHolder(binding.root) {
+            fun bind(device: AE){
                 binding.deviceName.text = device.applicationName
-                binding.deviceStatus.text = "Locked"
+                binding.deviceStatus.text = "Registered"
             }
         }
     }
 
-    private var _binding: FragmentDeviceMonitorBinding? = null
+    // Field for this fragment
+    private var _binding: FragmentDeviceListBinding? = null
     private val binding get() = _binding!!
-
     private var _adapter: DeviceAdapter? = null
     private val adapter get() = _adapter!!
+
     private val viewModel: MainViewModel by activityViewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -81,16 +74,27 @@ class DeviceMonitorFragment: Fragment() {
         }
     }
 
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
-        _binding = FragmentDeviceMonitorBinding.inflate(inflater, container, false)
+    // onCreateView -> Declare layout
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
+        // Inflate the layout for this fragment
+        _binding = FragmentDeviceListBinding.inflate(inflater, container, false)
         return binding.root
     }
 
+    // onViewCreated -> Method Declaration
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        binding.deviceMonitorRecyclerView.setHasFixedSize(false)
-        binding.deviceMonitorRecyclerView.adapter = adapter
-        binding.deviceMonitorRecyclerView.layoutManager = GridLayoutManager(context, 2, RecyclerView.VERTICAL, false)
-        binding.deviceMonitorRecyclerView.addItemDecoration(ItemPadding(5,5))
+
+        binding.deviceRecyclerView.setHasFixedSize(false)
+        binding.deviceRecyclerView.adapter = adapter
+        binding.deviceRecyclerView.layoutManager = GridLayoutManager(context, 2, RecyclerView.VERTICAL, false)
+        binding.deviceRecyclerView.addItemDecoration(ItemPadding(5,5))
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+
+        _binding = null
+        _adapter = null
     }
 }
