@@ -37,6 +37,7 @@ import org.eclipse.paho.client.mqttv3.MqttCallback
 import org.eclipse.paho.client.mqttv3.MqttClient
 import org.eclipse.paho.client.mqttv3.MqttException
 import org.eclipse.paho.client.mqttv3.MqttMessage
+import timber.log.Timber
 import java.io.BufferedReader
 import java.io.DataOutputStream
 import java.io.InputStreamReader
@@ -72,15 +73,14 @@ class MainActivity : AppCompatActivity() {
     private val addDeviceLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()){ result ->
         if(result.resultCode == RESULT_OK){
             val serviceAEBundle = result.data ?: return@registerForActivityResult
-            Log.d(TAG,"Bundle Found")
             val serviceAE = serviceAEBundle.getStringExtra("SERVICE_AE") ?: return@registerForActivityResult
-            Log.d(TAG, "Data Found: ${serviceAE}")
-            val newAE = AE()
-            newAE.setAppName(serviceAE)
-            viewModel.mutableDeviceList.add(newAE)
+
+            
+            viewModel.getDeviceList().add(serviceAE)
             viewModel.addServiceAE(serviceAE)
+            Timber.tag(TAG).d("Registration Succeeded")
         } else{
-            Log.d(TAG,"Registration Canceled")
+            Timber.tag(TAG).d("Registration Canceled")
         }
     }
 
@@ -92,7 +92,7 @@ class MainActivity : AppCompatActivity() {
                 when (currentFragmentId){
                     R.id.deviceMonitorFragment -> navController.navigate(R.id.action_deviceMonitorFragment_to_deviceFragment)
                 }
-            } else if (item.itemId == R.id.menu_monitor) {
+            } else if (item.itemId == R.id.menu_manage) {
                 when (currentFragmentId){
                     R.id.deviceListFragment -> navController.navigate(R.id.action_deviceFragment_to_deviceMonitorFragment)
                 }
@@ -111,7 +111,7 @@ class MainActivity : AppCompatActivity() {
                     binding.menuBottomNavigation.menu.findItem(R.id.menu_device).isChecked = true
                 }
                 R.id.deviceMonitorFragment -> {
-                    binding.menuBottomNavigation.menu.findItem(R.id.menu_monitor).isChecked = true
+                    binding.menuBottomNavigation.menu.findItem(R.id.menu_manage).isChecked = true
                 }
             }
         }
@@ -176,8 +176,8 @@ class MainActivity : AppCompatActivity() {
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         return when(item.itemId){
             android.R.id.home -> {
-                for(ae in viewModel.mutableDeviceList){
-                    createMQTT(false, ae.applicationName)
+                for(ae in viewModel.getDeviceList()){
+                    createMQTT(false, ae)
                 }
                 finish()
                 true
@@ -188,8 +188,8 @@ class MainActivity : AppCompatActivity() {
                 true
             }
             R.id.menu_notify -> {
-                for(ae in viewModel.mutableDeviceList){
-                    createMQTT(true, ae.applicationName)
+                for(ae in viewModel.getDeviceList()){
+                    createMQTT(true, ae)
                 }
                 true
             }
@@ -199,7 +199,7 @@ class MainActivity : AppCompatActivity() {
 
     /* AE Create for Android AE */
     private fun getAEInfo() {
-        Mobius_Address = "192.168.55.35"
+        Mobius_Address = "172.30.128.1"
 
         csebase.setInfo(Mobius_Address, "7579", "Mobius", MQTTPort)
 
@@ -210,24 +210,24 @@ class MainActivity : AppCompatActivity() {
         aeCreate.setReceiver(object : IReceived {
             override fun getResponseBody(msg: String) {
                 handler.post {
-                    Log.d(TAG, "** AE Create ResponseCode[$msg]")
+                    Timber.tag(TAG).d("** AE Create ResponseCode[%s]", msg)
                     if (msg.toInt() == 201) {
                         MQTT_Req_Topic = "/oneM2M/req/Mobius2/" + ae.aEid + "_sub" + "/#"
                         MQTT_Resp_Topic = "/oneM2M/resp/Mobius2/" + ae.aEid + "_sub" + "/json"
-                        Log.d(TAG, "ReqTopic[$MQTT_Req_Topic]")
-                        Log.d(TAG, "ResTopic[$MQTT_Resp_Topic]")
+                        Timber.tag(TAG).d("ReqTopic[%s]", MQTT_Req_Topic)
+                        Timber.tag(TAG).d("ResTopic[%s]", MQTT_Resp_Topic)
                     } else { // If AE is Exist , GET AEID
                         val aeRetrive = aeRetrieveRequest()
                         aeRetrive.setReceiver(object : IReceived {
                             override fun getResponseBody(resmsg: String) {
                                 handler.post {
-                                    Log.d(TAG, "** AE Retrive ResponseCode[$resmsg]")
+                                    Timber.tag(TAG).d("** AE Retrive ResponseCode[%s] **", resmsg)
                                     MQTT_Req_Topic =
                                         "/oneM2M/req/Mobius2/" + ae.aEid + "_sub" + "/#"
                                     MQTT_Resp_Topic =
                                         "/oneM2M/resp/Mobius2/" + ae.aEid + "_sub" + "/json"
-                                    Log.d(TAG, "ReqTopic[$MQTT_Req_Topic]")
-                                    Log.d(TAG, "ResTopic[$MQTT_Resp_Topic]")
+                                    Timber.tag(TAG).d("ReqTopic[%s]", MQTT_Req_Topic)
+                                    Timber.tag(TAG).d( "ResTopic[%s]", MQTT_Resp_Topic)
                                 }
                             }
                         })

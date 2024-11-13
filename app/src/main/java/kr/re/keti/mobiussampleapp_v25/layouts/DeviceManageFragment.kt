@@ -9,11 +9,10 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import kr.re.keti.mobiussampleapp_v25.data.AE
 import kr.re.keti.mobiussampleapp_v25.databinding.FragmentDeviceMonitorBinding
 import kr.re.keti.mobiussampleapp_v25.databinding.ItemRecyclerDeviceMonitorBinding
 
-class DeviceMonitorFragment: Fragment() {
+class DeviceManageFragment: Fragment() {
     // Inner Class For Decorating Recycler View of Device List
     internal inner class ItemPadding(private val divWidth: Int?, private val divHeight: Int?) : RecyclerView.ItemDecoration() {
         override fun getItemOffsets(
@@ -33,7 +32,7 @@ class DeviceMonitorFragment: Fragment() {
     }
 
     // Inner Class For Setting Adapter in Device Recycler View
-    inner class DeviceAdapter(private val deviceList: MutableList<AE>) : RecyclerView.Adapter<DeviceAdapter.ViewHolder>() {
+    inner class DeviceAdapter(private val deviceList: MutableList<String>) : RecyclerView.Adapter<DeviceAdapter.ViewHolder>() {
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
             return ViewHolder(
                 ItemRecyclerDeviceMonitorBinding.inflate(
@@ -53,13 +52,13 @@ class DeviceMonitorFragment: Fragment() {
         }
 
         fun addData() {
-            notifyItemInserted(viewModel.mutableDeviceList.lastIndex)
+            notifyItemInserted(viewModel.getDeviceList().lastIndex)
         }
 
-        inner class ViewHolder(val binding: ItemRecyclerDeviceMonitorBinding) :
+        inner class ViewHolder(private val binding: ItemRecyclerDeviceMonitorBinding) :
             RecyclerView.ViewHolder(binding.root) {
-            fun bind(device: AE) {
-                binding.deviceName.text = device.applicationName
+            fun bind(device: String) {
+                binding.deviceName.text = device
                 binding.deviceStatus.text = "Locked"
             }
         }
@@ -74,7 +73,7 @@ class DeviceMonitorFragment: Fragment() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        _adapter = DeviceAdapter(viewModel.mutableDeviceList)
+        _adapter = DeviceAdapter(viewModel.getDeviceList())
         viewModel.addedServiceAEName.observe(this) {
             adapter.addData()
         }

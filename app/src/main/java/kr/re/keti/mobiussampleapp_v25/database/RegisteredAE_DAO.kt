@@ -9,7 +9,7 @@ import androidx.room.Update
 
 @Dao
 interface RegisteredAE_DAO {
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insert(registeredAE: RegisteredAE)
 
     @Update

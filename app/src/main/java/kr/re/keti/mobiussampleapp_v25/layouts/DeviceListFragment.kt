@@ -33,7 +33,7 @@ class DeviceListFragment : Fragment() {
     }
 
     // Inner Class For Setting Adapter in Device Recycler View
-    inner class DeviceAdapter(private val deviceList: MutableList<AE>) : RecyclerView.Adapter<DeviceAdapter.ViewHolder>() {
+    inner class DeviceAdapter(private val deviceList: MutableList<String>) : RecyclerView.Adapter<DeviceAdapter.ViewHolder>() {
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
             return ViewHolder(ItemRecyclerDeviceBinding.inflate(LayoutInflater.from(parent.context), parent, false))
         }
@@ -47,12 +47,12 @@ class DeviceListFragment : Fragment() {
         }
 
         fun addData(){
-            notifyItemInserted(viewModel.mutableDeviceList.lastIndex)
+            notifyItemInserted(viewModel.getDeviceList().lastIndex)
         }
 
         inner class ViewHolder(val binding: ItemRecyclerDeviceBinding): RecyclerView.ViewHolder(binding.root) {
-            fun bind(device: AE){
-                binding.deviceName.text = device.applicationName
+            fun bind(device: String){
+                binding.deviceName.text = device
                 binding.deviceStatus.text = "Registered"
             }
         }
@@ -68,7 +68,7 @@ class DeviceListFragment : Fragment() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        _adapter = DeviceAdapter(viewModel.mutableDeviceList)
+        _adapter = DeviceAdapter(viewModel.getDeviceList())
         viewModel.addedServiceAEName.observe(this) {
             adapter.addData()
         }
