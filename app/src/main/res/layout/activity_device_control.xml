@@ -22,11 +22,13 @@
         android:layout_gravity="bottom"
         android:gravity="center_horizontal">
 
-        <Button
-            android:id="@+id/button"
-            android:layout_width="120dp"
-            android:layout_height="wrap_content"
-            android:text="Button" />
+        <ImageButton
+            android:id="@+id/imageButton"
+            android:layout_width="300sp"
+            android:layout_height="20sp"
+            android:src="@drawable/ic_arrow_down"
+            android:contentDescription="Show Popup Dialog"
+            android:background="@drawable/bg_device_control_menu"/>
 
         <androidx.constraintlayout.widget.ConstraintLayout
             android:layout_width="match_parent"
