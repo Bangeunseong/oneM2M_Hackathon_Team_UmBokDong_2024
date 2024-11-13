@@ -14,5 +14,5 @@ data class RegisteredAE(
     var appPort: String,
     var appProtocol: String,
     var tasPort: String,
-    var cilimit: String,) {
+    var cilimit: String) {
 }

@@ -27,7 +27,11 @@ import kr.re.keti.mobiussampleapp_v25.utils.MqttClientRequest
 import kr.re.keti.mobiussampleapp_v25.utils.MqttClientRequestParser
 import kr.re.keti.mobiussampleapp_v25.utils.ParseElementXml
 import info.mqtt.android.service.MqttAndroidClient
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kr.re.keti.mobiussampleapp_v25.R
+import kr.re.keti.mobiussampleapp_v25.database.RegisteredAE
 import kr.re.keti.mobiussampleapp_v25.databinding.ActivityMainBinding
 import kr.re.keti.mobiussampleapp_v25.database.RegisteredAEDatabase
 import org.eclipse.paho.client.mqttv3.IMqttActionListener
@@ -45,6 +49,7 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.util.logging.Level
 import java.util.logging.Logger
+import kotlin.coroutines.coroutineContext
 
 // TODO: 현재 Subscription 한 기기들의 정보를 받아와서 viewModel.mutableDeviceList에 저장하는 것이 필요
 class MainActivity : AppCompatActivity() {
