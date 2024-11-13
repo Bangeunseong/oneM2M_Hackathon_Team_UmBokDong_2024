@@ -5,7 +5,7 @@ import androidx.room.PrimaryKey
 
 @Entity
 data class RegisteredAE(
-    var application: String,
+    var aEid: String,
     var appos: String,
     var appId: String,
     @PrimaryKey

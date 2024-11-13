@@ -9,7 +9,7 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import kr.re.keti.mobiussampleapp_v25.databinding.FragmentDeviceMonitorBinding
+import kr.re.keti.mobiussampleapp_v25.databinding.FragmentDeviceManageBinding
 import kr.re.keti.mobiussampleapp_v25.databinding.ItemRecyclerDeviceMonitorBinding
 
 class DeviceManageFragment: Fragment() {
@@ -64,7 +64,7 @@ class DeviceManageFragment: Fragment() {
         }
     }
 
-    private var _binding: FragmentDeviceMonitorBinding? = null
+    private var _binding: FragmentDeviceManageBinding? = null
     private val binding get() = _binding!!
 
     private var _adapter: DeviceAdapter? = null
@@ -80,7 +80,7 @@ class DeviceManageFragment: Fragment() {
     }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
-        _binding = FragmentDeviceMonitorBinding.inflate(inflater, container, false)
+        _binding = FragmentDeviceManageBinding.inflate(inflater, container, false)
         return binding.root
     }
 
