@@ -18,7 +18,7 @@
         android:id="@+id/deviceMonitorFragment"
         android:name="kr.re.keti.mobiussampleapp_v25.layouts.DeviceManageFragment"
         android:label="Monitor"
-        tools:layout="@layout/fragment_device_monitor">
+        tools:layout="@layout/fragment_device_manage">
         <action
             android:id="@+id/action_deviceMonitorFragment_to_deviceFragment"
             app:destination="@id/deviceListFragment" />

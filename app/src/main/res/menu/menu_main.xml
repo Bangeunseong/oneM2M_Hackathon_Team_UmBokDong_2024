@@ -4,7 +4,7 @@
         android:id="@+id/menu_device"
         android:icon="@drawable/icon_devices"
         android:title="Device" />
-    <item android:id="@+id/menu_monitor"
+    <item android:id="@+id/menu_manage"
         android:icon="@drawable/icon_monitor"
-        android:title="Monitor" />
+        android:title="Manage" />
 </menu>

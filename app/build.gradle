@@ -59,7 +59,6 @@ dependencies {
     implementation 'androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.7'
     implementation 'androidx.navigation:navigation-fragment-ktx:2.8.3'
     implementation 'androidx.navigation:navigation-ui-ktx:2.8.3'
-    implementation 'com.google.android.gms:play-services-maps:19.0.0'
     implementation 'androidx.navigation:navigation-runtime-ktx:2.8.3'
     testImplementation 'junit:junit:4.13.2'
     testImplementation 'org.junit.jupiter:junit-jupiter:5.8.1'
@@ -77,6 +76,10 @@ dependencies {
     implementation 'com.jakewharton.timber:timber:5.0.1'
     // Add below to fix Runtime error(ClassNotFoundException)
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
+
+    // Google Maps
+    implementation 'com.google.android.gms:play-services-maps:19.0.0'
+    implementation 'com.google.android.gms:play-services-location:21.3.0'
 
     androidTestImplementation 'org.testng:testng:6.9.6'
 }
