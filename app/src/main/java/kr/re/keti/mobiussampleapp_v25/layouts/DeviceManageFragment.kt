@@ -1,5 +1,6 @@
 package kr.re.keti.mobiussampleapp_v25.layouts
 
+import android.content.Intent
 import android.graphics.Rect
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -13,7 +14,7 @@ import kr.re.keti.mobiussampleapp_v25.data.AE
 import kr.re.keti.mobiussampleapp_v25.databinding.FragmentDeviceMonitorBinding
 import kr.re.keti.mobiussampleapp_v25.databinding.ItemRecyclerDeviceMonitorBinding
 
-class DeviceMonitorFragment: Fragment() {
+class DeviceManageFragment: Fragment() {
     // Inner Class For Decorating Recycler View of Device List
     internal inner class ItemPadding(private val divWidth: Int?, private val divHeight: Int?) : RecyclerView.ItemDecoration() {
         override fun getItemOffsets(
