@@ -15,33 +15,65 @@
         map:uiRotateGestures="true"
         map:cameraTilt="30"/>
 
-    <GridLayout
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical">
+        android:orientation="vertical"
+        android:layout_gravity="bottom"
+        android:gravity="center_horizontal">
 
-        <androidx.appcompat.widget.SwitchCompat
-            android:id="@+id/switch1"
-            android:layout_width="match_parent"
+        <Button
+            android:id="@+id/button"
+            android:layout_width="120dp"
             android:layout_height="wrap_content"
-            android:text="Switch" />
+            android:text="Button" />
 
-        <androidx.appcompat.widget.SwitchCompat
-            android:id="@+id/switch2"
+        <androidx.constraintlayout.widget.ConstraintLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Switch" />
+            android:layout_height="match_parent"
+            android:background="@drawable/bg_device_control_menu"
+            android:paddingVertical="25dp">
 
-        <TextView
-            android:id="@+id/textView2"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="TextView" />
+            <androidx.appcompat.widget.SwitchCompat
+                android:id="@+id/switch1"
+                android:layout_width="match_parent"
+                android:layout_height="50dp"
+                android:paddingHorizontal="10dp"
+                android:text="Led Light"
+                android:textSize="16sp"
+                app:layout_constraintTop_toBottomOf="@id/textView2" />
 
-        <ImageView
-            android:id="@+id/imageView3"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            map:srcCompat="@drawable/icon_check" />
-    </GridLayout>
+            <androidx.appcompat.widget.SwitchCompat
+                android:id="@+id/switch2"
+                android:layout_width="match_parent"
+                android:layout_height="50dp"
+                android:paddingHorizontal="10dp"
+                android:text="Unlocked"
+                android:textSize="16sp"
+                app:layout_constraintTop_toBottomOf="@id/switch1" />
+
+            <TextView
+                android:id="@+id/textView2"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:padding="12dp"
+                android:text="No Anomaly Detected!"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/imageView3" />
+
+            <ImageView
+                android:id="@+id/imageView3"
+                android:layout_width="100dp"
+                android:layout_height="100dp"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                map:srcCompat="@drawable/icon_check" />
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
+    </LinearLayout>
+
 </FrameLayout>
