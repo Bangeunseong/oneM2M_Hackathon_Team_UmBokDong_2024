@@ -1,5 +1,6 @@
 package kr.re.keti.mobiussampleapp_v25.layouts
 
+import android.content.Intent
 import android.graphics.Rect
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -60,6 +61,13 @@ class DeviceManageFragment: Fragment() {
             fun bind(device: String) {
                 binding.deviceName.text = device
                 binding.deviceStatus.text = "Locked"
+                binding.itemLayout.setOnClickListener {
+                    val intent = Intent(context, DeviceControlActivity::class.java)
+                    intent.putExtra("SERVICE_AE", device)
+                    intent.putExtra("MQTT_REQ_TOPIC", viewModel.mqttReqTopic)
+                    intent.putExtra("MQTT_RESP_TOPIC", viewModel.mqttRespTopic)
+                    startActivity(intent)
+                }
             }
         }
     }
