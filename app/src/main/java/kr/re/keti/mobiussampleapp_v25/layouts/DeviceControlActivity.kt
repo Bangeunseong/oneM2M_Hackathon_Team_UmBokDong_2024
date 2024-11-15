@@ -1,21 +1,14 @@
 package kr.re.keti.mobiussampleapp_v25.layouts
 
-import android.Manifest
 import android.animation.ObjectAnimator
-import android.content.pm.PackageManager
 import android.content.res.Resources
-import android.location.Location
 import android.os.Bundle
 import android.os.Handler
 import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.app.ActivityCompat
 import androidx.lifecycle.MutableLiveData
-import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
-import com.google.android.gms.maps.LocationSource
-import com.google.android.gms.maps.LocationSource.OnLocationChangedListener
 import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.MarkerOptions
@@ -32,6 +25,7 @@ import kr.re.keti.mobiussampleapp_v25.layouts.MainActivity.Companion.csebase
 import kr.re.keti.mobiussampleapp_v25.layouts.MainActivity.IReceived
 import kr.re.keti.mobiussampleapp_v25.utils.MqttClientRequest
 import kr.re.keti.mobiussampleapp_v25.utils.MqttClientRequestParser
+import kr.re.keti.mobiussampleapp_v25.utils.ParseElementXml
 import org.eclipse.paho.client.mqttv3.IMqttActionListener
 import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken
 import org.eclipse.paho.client.mqttv3.IMqttToken
@@ -58,6 +52,7 @@ class DeviceControlActivity: AppCompatActivity(), OnMapReadyCallback {
     private var MQTT_Resp_Topic = ""
 
     private var handler = Handler()
+    private var coroutine: CoroutineScope = CoroutineScope(Dispatchers.IO)
     private var isConnectionOpened = false
     private lateinit var deviceAEName: String
 
@@ -78,7 +73,7 @@ class DeviceControlActivity: AppCompatActivity(), OnMapReadyCallback {
                     start()
                 }
                 createPresMQTT(false, serviceAEName = deviceAEName+"_pres")
-                createGPSMQTT(false, serviceAEName = deviceAEName+"_loc")
+                //createGPSMQTT(false, serviceAEName = deviceAEName+"_loc")
                 isConnectionOpened = !isConnectionOpened
             }
             else {
@@ -88,12 +83,15 @@ class DeviceControlActivity: AppCompatActivity(), OnMapReadyCallback {
                     start()
                 }
                 createPresMQTT(true, serviceAEName = deviceAEName+"_pres")
-                createGPSMQTT(true, serviceAEName = deviceAEName+"_loc")
+                //createGPSMQTT(true, serviceAEName = deviceAEName+"_loc")
                 isConnectionOpened = !isConnectionOpened
             }
         }
+        getDeviceStatus()
+        binding.ledSwitch.setOnCheckedChangeListener { buttonView, isChecked ->
 
-        CoroutineScope(Dispatchers.IO).launch {
+        }
+        binding.lockSwitch.setOnCheckedChangeListener { buttonView, isChecked ->
 
         }
 
@@ -115,7 +113,7 @@ class DeviceControlActivity: AppCompatActivity(), OnMapReadyCallback {
         binding.mapView.onStop()
         if(isConnectionOpened) {
             createPresMQTT(false, serviceAEName = deviceAEName+"_pres")
-            createGPSMQTT(false, serviceAEName = deviceAEName+"_loc")
+            //createGPSMQTT(false, serviceAEName = deviceAEName+"_loc")
         }
     }
 
@@ -134,7 +132,7 @@ class DeviceControlActivity: AppCompatActivity(), OnMapReadyCallback {
         binding.mapView.onDestroy()
         if(isConnectionOpened) {
             createPresMQTT(false, serviceAEName = deviceAEName+"_pres")
-            createGPSMQTT(false, serviceAEName = deviceAEName+"_loc")
+            //createGPSMQTT(false, serviceAEName = deviceAEName+"_loc")
         }
     }
 
@@ -147,6 +145,32 @@ class DeviceControlActivity: AppCompatActivity(), OnMapReadyCallback {
         googleMap.mapType = GoogleMap.MAP_TYPE_NORMAL
         googleMap.addMarker(MarkerOptions().position(LatLng(37.654601, 127.060530)).title("Current Location"))
         googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(LatLng(37.654601, 127.060530), 15F))
+    }
+
+    // Retrieve Actuators status
+    private fun getDeviceStatus(){
+        CoroutineScope(Dispatchers.IO).launch {
+            val reqLed = RetrieveRequest(deviceAEName+"_led", "DATA")
+            val reqLock = RetrieveRequest(deviceAEName+"_lock", "DATA")
+            reqLed.setReceiver(object : IReceived {
+                override fun getResponseBody(msg: String) {
+                    handler.post {
+                        val pxml = ParseElementXml()
+                        binding.ledSwitch.isChecked = pxml.GetElementXml(msg, "con").toBoolean()
+                    }
+                }
+            })
+            reqLock.setReceiver(object : IReceived {
+                override fun getResponseBody(msg: String) {
+                    handler.post {
+                        val pxml = ParseElementXml()
+                        binding.lockSwitch.isChecked = pxml.GetElementXml(msg, "con").toBoolean()
+                    }
+                }
+            })
+            reqLed.start()
+            reqLock.start()
+        }
     }
 
     // --- MQTT Functions ---
@@ -230,7 +254,7 @@ class DeviceControlActivity: AppCompatActivity(), OnMapReadyCallback {
             Log.d(TAG, "Recv OK ResMessage [$responseMessage]")
 
             /* Make json for MQTT Response Message */
-            val res_message = MqttMessage(responseMessage!!.toByteArray())
+            val res_message = MqttMessage(responseMessage.toByteArray())
 
             try {
                 gpsMqttClient!!.publish(MQTT_Resp_Topic, res_message)
@@ -349,7 +373,7 @@ class DeviceControlActivity: AppCompatActivity(), OnMapReadyCallback {
         private var ContainerName = "cnt-co2"
         private var serviceAEName = ""
 
-        constructor(containerName: String, serviceAEName: String) {
+        constructor(serviceAEName: String, containerName: String) {
             this.ContainerName = containerName
             this.serviceAEName = serviceAEName
         }
