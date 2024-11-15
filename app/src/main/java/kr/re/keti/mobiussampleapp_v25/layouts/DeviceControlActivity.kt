@@ -1,7 +1,9 @@
 package kr.re.keti.mobiussampleapp_v25.layouts
 
 import android.Manifest
+import android.animation.ObjectAnimator
 import android.content.pm.PackageManager
+import android.content.res.Resources
 import android.location.Location
 import android.os.Bundle
 import android.os.Handler
@@ -21,6 +23,7 @@ import info.mqtt.android.service.MqttAndroidClient
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kr.re.keti.mobiussampleapp_v25.R
 import kr.re.keti.mobiussampleapp_v25.data.ContentInstanceObject
 import kr.re.keti.mobiussampleapp_v25.data.ContentSubscribeObject
 import kr.re.keti.mobiussampleapp_v25.databinding.ActivityDeviceControlBinding
@@ -69,11 +72,21 @@ class DeviceControlActivity: AppCompatActivity(), OnMapReadyCallback {
         binding.mapView.getMapAsync(this)
         binding.imageButton.setOnClickListener {
             if(isConnectionOpened) {
+                binding.imageButton.setImageResource(R.drawable.ic_arrow_up)
+                ObjectAnimator.ofFloat(binding.deviceControlLayout, "translationY", (298f * Resources.getSystem().displayMetrics.density + 0.5f)).apply {
+                    duration = 1000
+                    start()
+                }
                 createPresMQTT(false, serviceAEName = deviceAEName+"_pres")
                 createGPSMQTT(false, serviceAEName = deviceAEName+"_loc")
                 isConnectionOpened = !isConnectionOpened
             }
             else {
+                binding.imageButton.setImageResource(R.drawable.ic_arrow_down)
+                ObjectAnimator.ofFloat(binding.deviceControlLayout, "translationY", (10f * Resources.getSystem().displayMetrics.density + 0.5f)).apply {
+                    duration = 1000
+                    start()
+                }
                 createPresMQTT(true, serviceAEName = deviceAEName+"_pres")
                 createGPSMQTT(true, serviceAEName = deviceAEName+"_loc")
                 isConnectionOpened = !isConnectionOpened
@@ -166,9 +179,8 @@ class DeviceControlActivity: AppCompatActivity(), OnMapReadyCallback {
             }
         } else {
             /* MQTT unSubscribe or Client Close */
-            // mqttClient!!.setCallback(null)
-            gpsMqttClient!!.unsubscribe(MQTT_Req_Topic)
-            gpsMqttClient!!.close()
+            gpsMqttClient?.unsubscribe(MQTT_Req_Topic)
+            gpsMqttClient?.close()
             gpsMqttClient = null
         }
     }
@@ -261,8 +273,8 @@ class DeviceControlActivity: AppCompatActivity(), OnMapReadyCallback {
             }
         } else {
             /* MQTT unSubscribe or Client Close */
-            presMqttClient!!.unsubscribe(MQTT_Req_Topic)
-            presMqttClient!!.close()
+            presMqttClient?.unsubscribe(MQTT_Req_Topic)
+            presMqttClient?.close()
             presMqttClient = null
         }
     }
