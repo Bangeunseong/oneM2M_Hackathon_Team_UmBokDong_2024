@@ -19,8 +19,7 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme"
         android:usesCleartextTraffic="true"
-        android:enableOnBackInvokedCallback="true"
-        tools:targetApi="tiramisu">
+        android:enableOnBackInvokedCallback="true">
 
         <uses-library android:name="com.google.android.maps" />
 

@@ -1,6 +1,7 @@
 package kr.re.keti.mobiussampleapp_v25.layouts
 
 import android.Manifest
+import android.Manifest.permission.ACCESS_FINE_LOCATION
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
@@ -118,7 +119,8 @@ class MainActivity : AppCompatActivity() {
         super.onStart()
 
         if(checkSelfPermission(FILE_INTEGRITY_SERVICE) == PackageManager.PERMISSION_DENIED ||
-            checkSelfPermission(NOTIFICATION_SERVICE) == PackageManager.PERMISSION_DENIED){
+            checkSelfPermission(NOTIFICATION_SERVICE) == PackageManager.PERMISSION_DENIED ||
+            checkSelfPermission(ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_DENIED){
             if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU){
                 requestPermissions(arrayOf(
                     Manifest.permission.ACCESS_FINE_LOCATION,

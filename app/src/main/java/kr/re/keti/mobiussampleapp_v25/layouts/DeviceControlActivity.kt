@@ -1,16 +1,26 @@
 package kr.re.keti.mobiussampleapp_v25.layouts
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.location.Location
 import android.os.Bundle
 import android.os.Handler
 import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
 import androidx.lifecycle.MutableLiveData
+import com.google.android.gms.location.FusedLocationProviderClient
+import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.LocationSource
 import com.google.android.gms.maps.LocationSource.OnLocationChangedListener
 import com.google.android.gms.maps.OnMapReadyCallback
+import com.google.android.gms.maps.model.LatLng
+import com.google.android.gms.maps.model.MarkerOptions
 import info.mqtt.android.service.MqttAndroidClient
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kr.re.keti.mobiussampleapp_v25.data.ContentInstanceObject
 import kr.re.keti.mobiussampleapp_v25.data.ContentSubscribeObject
 import kr.re.keti.mobiussampleapp_v25.databinding.ActivityDeviceControlBinding
@@ -37,7 +47,6 @@ import java.util.logging.Logger
 class DeviceControlActivity: AppCompatActivity(), OnMapReadyCallback {
     private var _binding: ActivityDeviceControlBinding? = null
     private val binding get() = _binding!!
-    private val locationSource = DeviceLocationSource()
     private val mutableLiveData = MutableLiveData<Pair<Float, Float>>()
 
     private var gpsMqttClient: MqttAndroidClient? = null
@@ -46,7 +55,7 @@ class DeviceControlActivity: AppCompatActivity(), OnMapReadyCallback {
     private var MQTT_Resp_Topic = ""
 
     private var handler = Handler()
-    private var isOpened = false
+    private var isConnectionOpened = false
     private lateinit var deviceAEName: String
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -59,9 +68,22 @@ class DeviceControlActivity: AppCompatActivity(), OnMapReadyCallback {
         binding.mapView.onCreate(savedInstanceState)
         binding.mapView.getMapAsync(this)
         binding.imageButton.setOnClickListener {
-            if(isOpened) createPresMQTT(false, serviceAEName = deviceAEName+"_pres")
-            else createPresMQTT(true, serviceAEName = deviceAEName+"_pres")
+            if(isConnectionOpened) {
+                createPresMQTT(false, serviceAEName = deviceAEName+"_pres")
+                createGPSMQTT(false, serviceAEName = deviceAEName+"_loc")
+                isConnectionOpened = !isConnectionOpened
+            }
+            else {
+                createPresMQTT(true, serviceAEName = deviceAEName+"_pres")
+                createGPSMQTT(true, serviceAEName = deviceAEName+"_loc")
+                isConnectionOpened = !isConnectionOpened
+            }
         }
+
+        CoroutineScope(Dispatchers.IO).launch {
+
+        }
+
         setContentView(binding.root)
     }
 
@@ -70,9 +92,18 @@ class DeviceControlActivity: AppCompatActivity(), OnMapReadyCallback {
         binding.mapView.onStart()
     }
 
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        binding.mapView.onSaveInstanceState(outState)
+    }
+
     override fun onStop() {
         super.onStop()
         binding.mapView.onStop()
+        if(isConnectionOpened) {
+            createPresMQTT(false, serviceAEName = deviceAEName+"_pres")
+            createGPSMQTT(false, serviceAEName = deviceAEName+"_loc")
+        }
     }
 
     override fun onResume() {
@@ -88,6 +119,10 @@ class DeviceControlActivity: AppCompatActivity(), OnMapReadyCallback {
     override fun onDestroy() {
         super.onDestroy()
         binding.mapView.onDestroy()
+        if(isConnectionOpened) {
+            createPresMQTT(false, serviceAEName = deviceAEName+"_pres")
+            createGPSMQTT(false, serviceAEName = deviceAEName+"_loc")
+        }
     }
 
     override fun onLowMemory() {
@@ -97,24 +132,8 @@ class DeviceControlActivity: AppCompatActivity(), OnMapReadyCallback {
 
     override fun onMapReady(googleMap: GoogleMap) {
         googleMap.mapType = GoogleMap.MAP_TYPE_NORMAL
-        //googleMap.setLocationSource(locationSource)
-    }
-
-    internal inner class DeviceLocationSource: LocationSource{
-        private var listener: OnLocationChangedListener? = null
-
-        override fun activate(listener: OnLocationChangedListener) {
-            this.listener = listener
-            val location = Location("RealTimeLocationProvider")
-            location.latitude = 37.1
-            location.longitude = 32.0
-            location.accuracy = 100F
-            listener.onLocationChanged(location)
-        }
-
-        override fun deactivate() {
-            listener = null
-        }
+        googleMap.addMarker(MarkerOptions().position(LatLng(37.654601, 127.060530)).title("Current Location"))
+        googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(LatLng(37.654601, 127.060530), 15F))
     }
 
     // --- MQTT Functions ---
@@ -122,7 +141,7 @@ class DeviceControlActivity: AppCompatActivity(), OnMapReadyCallback {
     private fun createGPSMQTT(mqttStart: Boolean, serviceAEName: String) {
         if (mqttStart && gpsMqttClient == null) {
             /* Subscription Resource Create to Yellow Turtle */
-            val subcribeResource = SubscribeResource(serviceAEName)
+            val subcribeResource = CreateSubscribeResource(serviceAEName)
             subcribeResource.setReceiver(object : IReceived {
                 override fun getResponseBody(msg: String) {
                     handler.post {
@@ -148,8 +167,8 @@ class DeviceControlActivity: AppCompatActivity(), OnMapReadyCallback {
         } else {
             /* MQTT unSubscribe or Client Close */
             // mqttClient!!.setCallback(null)
-            if(gpsMqttClient != null)
-                gpsMqttClient!!.disconnect()
+            gpsMqttClient!!.unsubscribe(MQTT_Req_Topic)
+            gpsMqttClient!!.close()
             gpsMqttClient = null
         }
     }
@@ -217,7 +236,7 @@ class DeviceControlActivity: AppCompatActivity(), OnMapReadyCallback {
     private fun createPresMQTT(mqttStart: Boolean, serviceAEName: String) {
         if (mqttStart && presMqttClient == null) {
             /* Subscription Resource Create to Yellow Turtle */
-            val subcribeResource = SubscribeResource(serviceAEName)
+            val subcribeResource = CreateSubscribeResource(serviceAEName)
             subcribeResource.setReceiver(object : IReceived {
                 override fun getResponseBody(msg: String) {
                     handler.post {
@@ -242,9 +261,8 @@ class DeviceControlActivity: AppCompatActivity(), OnMapReadyCallback {
             }
         } else {
             /* MQTT unSubscribe or Client Close */
-            // mqttClient!!.setCallback(null)
-            if(presMqttClient != null)
-                presMqttClient!!.disconnect()
+            presMqttClient!!.unsubscribe(MQTT_Req_Topic)
+            presMqttClient!!.close()
             presMqttClient = null
         }
     }
@@ -274,7 +292,7 @@ class DeviceControlActivity: AppCompatActivity(), OnMapReadyCallback {
             Log.d(TAG, "connectionLost")
         }
 
-        @Throws(Exception::class)
+        //@Throws(Exception::class)
         override fun messageArrived(topic: String, message: MqttMessage) {
             Log.d(TAG, "messageArrived")
 
@@ -299,7 +317,7 @@ class DeviceControlActivity: AppCompatActivity(), OnMapReadyCallback {
             try {
                 presMqttClient!!.publish(MQTT_Resp_Topic, res_message)
             } catch (e: MqttException) {
-                e.printStackTrace()
+                Log.d(TAG, "${e.message}")
             }
         }
 
@@ -436,9 +454,9 @@ class DeviceControlActivity: AppCompatActivity(), OnMapReadyCallback {
 
     // --- Subscription Actions ---
     /* Subscribe Co2 Content Resource */
-    internal inner class SubscribeResource(private val serviceAEName: String) : Thread() {
+    internal inner class CreateSubscribeResource(private val serviceAEName: String) : Thread() {
         private val LOG: Logger = Logger.getLogger(
-            SubscribeResource::class.java.name
+            CreateSubscribeResource::class.java.name
         )
         private var receiver: IReceived? = null
         private val container_name = "DATA" //change to control container name
