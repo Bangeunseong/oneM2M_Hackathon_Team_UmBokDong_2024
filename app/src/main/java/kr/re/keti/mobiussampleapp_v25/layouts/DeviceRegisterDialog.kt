@@ -1,17 +1,15 @@
 package kr.re.keti.mobiussampleapp_v25.layouts
 
 import android.os.Bundle
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Toast
 import androidx.fragment.app.DialogFragment
 import kr.re.keti.mobiussampleapp_v25.databinding.ActivityAddFormatBinding
 import kr.re.keti.mobiussampleapp_v25.layouts.MainActivity.Companion.ae
 import kr.re.keti.mobiussampleapp_v25.layouts.MainActivity.Companion.csebase
 import kr.re.keti.mobiussampleapp_v25.layouts.MainActivity.IReceived
-import kr.re.keti.mobiussampleapp_v25.utils.AddListener
+import kr.re.keti.mobiussampleapp_v25.utils.DeviceAddListener
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.net.HttpURLConnection
@@ -19,7 +17,7 @@ import java.net.URL
 import java.util.logging.Level
 import java.util.logging.Logger
 
-class SetServiceAEDialog(private val listener: AddListener) : DialogFragment() {
+class DeviceRegisterDialog(private val listener: DeviceAddListener) : DialogFragment() {
     private var _binding: ActivityAddFormatBinding? = null
     private val binding get() = _binding!!
     private var reqServiceAE: RetrieveRequest? = null
@@ -38,7 +36,7 @@ class SetServiceAEDialog(private val listener: AddListener) : DialogFragment() {
             reqServiceAE = RetrieveRequest(serviceAE, "DATA")
             reqServiceAE!!.setReceiver(object : IReceived {
                 override fun getResponseBody(msg: String) {
-                    listener.setServiceAEName(binding.inputServiceAeName.text.toString())
+                    listener.setDeviceName(binding.inputServiceAeName.text.toString())
                     dismiss()
                 }
             })
