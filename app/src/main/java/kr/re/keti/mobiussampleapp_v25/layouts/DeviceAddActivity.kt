@@ -62,7 +62,7 @@ class DeviceAddActivity: AppCompatActivity(), AddListener {
     }
 
     override fun setServiceAEName(serviceAE: String?) {
-        Log.d("DeviceAddActivity", "Data: ${serviceAE}")
+        Log.d("DeviceAddActivity", "Data: $serviceAE")
         intent.putExtra("SERVICE_AE", serviceAE)
         setResult(RESULT_OK, intent)
         finish()

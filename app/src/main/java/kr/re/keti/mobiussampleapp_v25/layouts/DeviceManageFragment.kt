@@ -1,18 +1,39 @@
 package kr.re.keti.mobiussampleapp_v25.layouts
 
+import android.app.Activity.RESULT_OK
 import android.content.Intent
 import android.graphics.Rect
+import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kr.re.keti.mobiussampleapp_v25.R
+import kr.re.keti.mobiussampleapp_v25.data.ContentInstanceObject
+import kr.re.keti.mobiussampleapp_v25.database.RegisteredAE
 import kr.re.keti.mobiussampleapp_v25.databinding.FragmentDeviceManageBinding
 import kr.re.keti.mobiussampleapp_v25.databinding.ItemRecyclerDeviceMonitorBinding
+import kr.re.keti.mobiussampleapp_v25.layouts.MainActivity.Companion.ae
+import kr.re.keti.mobiussampleapp_v25.layouts.MainActivity.Companion.csebase
+import kr.re.keti.mobiussampleapp_v25.layouts.MainActivity.IReceived
+import java.io.BufferedReader
+import java.io.DataOutputStream
+import java.io.InputStreamReader
+import java.net.HttpURLConnection
+import java.net.URL
+import java.util.logging.Level
+import java.util.logging.Logger
 
+//TODO: Change icon when control led and lock state also create controlling led and lock state method
 class DeviceManageFragment: Fragment() {
     // Inner Class For Decorating Recycler View of Device List
     internal inner class ItemPadding(private val divWidth: Int?, private val divHeight: Int?) : RecyclerView.ItemDecoration() {
@@ -33,7 +54,7 @@ class DeviceManageFragment: Fragment() {
     }
 
     // Inner Class For Setting Adapter in Device Recycler View
-    inner class DeviceAdapter(private val deviceList: MutableList<String>) : RecyclerView.Adapter<DeviceAdapter.ViewHolder>() {
+    inner class DeviceAdapter(private val deviceList: MutableList<RegisteredAE>) : RecyclerView.Adapter<DeviceAdapter.ViewHolder>() {
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
             return ViewHolder(
                 ItemRecyclerDeviceMonitorBinding.inflate(
@@ -52,21 +73,26 @@ class DeviceManageFragment: Fragment() {
             return deviceList.size
         }
 
-        fun addData() {
-            notifyItemInserted(viewModel.getDeviceList().lastIndex)
-        }
-
         inner class ViewHolder(private val binding: ItemRecyclerDeviceMonitorBinding) :
             RecyclerView.ViewHolder(binding.root) {
-            fun bind(device: String) {
-                binding.deviceName.text = device
-                binding.deviceStatus.text = "Locked"
+            fun bind(device: RegisteredAE) {
+                Log.d("DeviceManageFragment","${device.applicationName}, ${device.isLedTurnedOn}, ${device.isLocked}")
+                binding.deviceName.text = device.applicationName
+                CoroutineScope(Dispatchers.IO).launch {
+                    binding.btnLock.setImageResource(if(device.isLocked) R.drawable.ic_lock else R.drawable.ic_unlock)
+                    binding.btnLight.setImageResource(if(device.isLedTurnedOn) R.drawable.ic_light_on else R.drawable.ic_light_off)
+                    binding.btnLight.invalidate()
+                    binding.btnLock.invalidate()
+                }
                 binding.itemLayout.setOnClickListener {
                     val intent = Intent(context, DeviceControlActivity::class.java)
-                    intent.putExtra("SERVICE_AE", device)
-                    intent.putExtra("MQTT_REQ_TOPIC", viewModel.mqttReqTopic)
-                    intent.putExtra("MQTT_RESP_TOPIC", viewModel.mqttRespTopic)
-                    startActivity(intent)
+                    val bundle = Bundle()
+                    bundle.putString("SERVICE_AE", device.applicationName)
+                    bundle.putString("MQTT_REQ_TOPIC", viewModel.mqttReqTopic)
+                    bundle.putString("MQTT_RESP_TOPIC", viewModel.mqttRespTopic)
+                    bundle.putInt("SERVICE_AE_POSITION", layoutPosition)
+                    intent.putExtras(bundle)
+                    controlActivityLauncher.launch(intent)
                 }
             }
         }
@@ -78,12 +104,43 @@ class DeviceManageFragment: Fragment() {
     private var _adapter: DeviceAdapter? = null
     private val adapter get() = _adapter!!
     private val viewModel: MainViewModel by activityViewModels()
+    private val controlActivityLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+        if(it.resultCode == RESULT_OK){
+            val bundle = it.data?.extras
+            Log.d("DeviceManageFragment", "bundle: $bundle")
+            if(bundle != null){
+                Log.d("DeviceManageFragment", "bundle: ${bundle.getInt("SERVICE_AE_POSITION")}")
+                if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU){
+                    val registeredAE = bundle.getParcelable("SERVICE_AE_OBJECT", RegisteredAE::class.java)
+                    val position = bundle.getInt("SERVICE_AE_POSITION")
+                    if(registeredAE != null){
+                        viewModel.getDeviceList()[position] = registeredAE
+                        viewModel.updateServiceAE(position)
+                    } else Log.d("DeviceManageFragment", "registeredAE is null", )
+                } else{
+                    val registeredAE = bundle.getParcelable("SERVICE_AE_OBJECT") as RegisteredAE?
+                    val position = bundle.getInt("SERVICE_AE_POSITION")
+                    if(registeredAE != null){
+                        viewModel.getDeviceList()[position] = registeredAE
+                        viewModel.updateServiceAE(position)
+                    }
+                }
+            }
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         _adapter = DeviceAdapter(viewModel.getDeviceList())
-        viewModel.addedServiceAEName.observe(this) {
-            adapter.addData()
+        viewModel.serviceAEAdd.observe(this) {
+            if (it != null) {
+                adapter.notifyItemInserted(it)
+            }
+        }
+        viewModel.serviceAEUpdate.observe(this) {
+            if (it != null) {
+                adapter.notifyItemChanged(it)
+            }
         }
     }
 
@@ -99,4 +156,78 @@ class DeviceManageFragment: Fragment() {
         binding.deviceMonitorRecyclerView.layoutManager = GridLayoutManager(context, 2, RecyclerView.VERTICAL, false)
         binding.deviceMonitorRecyclerView.addItemDecoration(ItemPadding(5,5))
     }
+
+    override fun onDestroy() {
+        super.onDestroy()
+
+        _binding = null
+        _adapter = null
+    }
+
+    // --- Control Actions ---
+    /* Request Control LED */
+    internal inner class ControlRequest(serviceAEName: String, containerName: String, comm: String) : Thread() {
+        private val LOG: Logger = Logger.getLogger(
+            ControlRequest::class.java.name
+        )
+        private var receiver: IReceived? = null
+        private var containerName = ""
+        private var serviceAEName = ""
+
+        var contentInstance: ContentInstanceObject = ContentInstanceObject()
+
+        init {
+            this.containerName = containerName
+            this.serviceAEName = serviceAEName
+            contentInstance.setContent(comm)
+        }
+
+        fun setReceiver(hanlder: IReceived?) {
+            this.receiver = hanlder
+        }
+
+        override fun run() {
+            try {
+                val sb = csebase.serviceUrl + "/" + serviceAEName + "/" + containerName
+
+                val mUrl = URL(sb)
+
+                val conn = mUrl.openConnection() as HttpURLConnection
+                conn.requestMethod = "POST"
+                conn.doInput = true
+                conn.doOutput = true
+                conn.useCaches = false
+                conn.instanceFollowRedirects = false
+
+                conn.setRequestProperty("Accept", "application/xml")
+                conn.setRequestProperty("Content-Type", "application/vnd.onem2m-res+xml;ty=4")
+                conn.setRequestProperty("locale", "ko")
+                conn.setRequestProperty("X-M2M-RI", "12345")
+                conn.setRequestProperty("X-M2M-Origin", ae.aEid)
+
+                val reqContent = contentInstance.makeXML()
+                conn.setRequestProperty("Content-Length", reqContent.length.toString())
+
+                val dos = DataOutputStream(conn.outputStream)
+                dos.write(reqContent.toByteArray())
+                dos.flush()
+                dos.close()
+
+                val `in` = BufferedReader(InputStreamReader(conn.inputStream))
+
+                var resp = ""
+                var strLine = ""
+                while ((`in`.readLine().also { strLine = it }) != null) {
+                    resp += strLine
+                }
+                if (resp !== "") {
+                    receiver!!.getResponseBody(resp)
+                }
+                conn.disconnect()
+            } catch (exp: Exception) {
+                LOG.log(Level.SEVERE, exp.message)
+            }
+        }
+    }
+    // ----------------------
 }

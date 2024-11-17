@@ -4,7 +4,9 @@ import android.animation.ObjectAnimator
 import android.content.res.Resources
 import android.os.Bundle
 import android.os.Handler
+import android.os.Looper
 import android.util.Log
+import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.MutableLiveData
 import com.google.android.gms.maps.CameraUpdateFactory
@@ -15,10 +17,20 @@ import com.google.android.gms.maps.model.MarkerOptions
 import info.mqtt.android.service.MqttAndroidClient
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kr.re.keti.mobiussampleapp_v25.App
 import kr.re.keti.mobiussampleapp_v25.R
 import kr.re.keti.mobiussampleapp_v25.data.ContentInstanceObject
 import kr.re.keti.mobiussampleapp_v25.data.ContentSubscribeObject
+import kr.re.keti.mobiussampleapp_v25.database.RegisteredAE
+import kr.re.keti.mobiussampleapp_v25.database.RegisteredAEDatabase
 import kr.re.keti.mobiussampleapp_v25.databinding.ActivityDeviceControlBinding
 import kr.re.keti.mobiussampleapp_v25.layouts.MainActivity.Companion.ae
 import kr.re.keti.mobiussampleapp_v25.layouts.MainActivity.Companion.csebase
@@ -31,13 +43,18 @@ import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken
 import org.eclipse.paho.client.mqttv3.IMqttToken
 import org.eclipse.paho.client.mqttv3.MqttCallback
 import org.eclipse.paho.client.mqttv3.MqttClient
+import org.eclipse.paho.client.mqttv3.MqttConnectOptions
 import org.eclipse.paho.client.mqttv3.MqttException
 import org.eclipse.paho.client.mqttv3.MqttMessage
+import org.json.JSONObject
 import java.io.BufferedReader
 import java.io.DataOutputStream
 import java.io.InputStreamReader
+import java.lang.Thread.sleep
 import java.net.HttpURLConnection
 import java.net.URL
+import java.util.concurrent.Executor
+import java.util.concurrent.Executors
 import java.util.logging.Level
 import java.util.logging.Logger
 
@@ -46,35 +63,42 @@ class DeviceControlActivity: AppCompatActivity(), OnMapReadyCallback {
     private val binding get() = _binding!!
     private val mutableLiveData = MutableLiveData<Pair<Float, Float>>()
 
-    private var gpsMqttClient: MqttAndroidClient? = null
-    private var presMqttClient: MqttAndroidClient? = null
     private var MQTT_Req_Topic = ""
     private var MQTT_Resp_Topic = ""
 
-    private var handler = Handler()
-    private var coroutine: CoroutineScope = CoroutineScope(Dispatchers.IO)
-    private var isConnectionOpened = false
+    private var handler = Executors.newSingleThreadExecutor()
+    private var isOpened = false
     private lateinit var deviceAEName: String
+    private lateinit var db: RegisteredAEDatabase
+    private lateinit var callback: OnBackPressedCallback
+    private val job = Job()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         _binding = ActivityDeviceControlBinding.inflate(layoutInflater)
-        deviceAEName = intent.getStringExtra("SERVICE_AE").toString()
-        MQTT_Req_Topic = intent.getStringExtra("MQTT_REQ_TOPIC").toString()
-        MQTT_Resp_Topic = intent.getStringExtra("MQTT_RESP_TOPIC").toString()
+        val bundle = intent.extras
+
+        if (bundle != null) {
+            deviceAEName = bundle.getString("SERVICE_AE").toString()
+            MQTT_Req_Topic = bundle.getString("MQTT_REQ_TOPIC").toString()
+            MQTT_Resp_Topic = bundle.getString("MQTT_RESP_TOPIC").toString()
+        } else{
+            Log.d(TAG, "Bundle is null!")
+            setResult(RESULT_CANCELED)
+            finish()
+        }
+        db = RegisteredAEDatabase.getInstance(applicationContext)
 
         binding.mapView.onCreate(savedInstanceState)
         binding.mapView.getMapAsync(this)
         binding.imageButton.setOnClickListener {
-            if(isConnectionOpened) {
+            isOpened = !isOpened
+            if(!isOpened) {
                 binding.imageButton.setImageResource(R.drawable.ic_arrow_up)
                 ObjectAnimator.ofFloat(binding.deviceControlLayout, "translationY", (298f * Resources.getSystem().displayMetrics.density + 0.5f)).apply {
                     duration = 1000
                     start()
                 }
-                createPresMQTT(false, serviceAEName = deviceAEName+"_pres")
-                //createGPSMQTT(false, serviceAEName = deviceAEName+"_loc")
-                isConnectionOpened = !isConnectionOpened
             }
             else {
                 binding.imageButton.setImageResource(R.drawable.ic_arrow_down)
@@ -82,25 +106,77 @@ class DeviceControlActivity: AppCompatActivity(), OnMapReadyCallback {
                     duration = 1000
                     start()
                 }
-                createPresMQTT(true, serviceAEName = deviceAEName+"_pres")
-                //createGPSMQTT(true, serviceAEName = deviceAEName+"_loc")
-                isConnectionOpened = !isConnectionOpened
             }
         }
-        getDeviceStatus()
-        binding.ledSwitch.setOnCheckedChangeListener { buttonView, isChecked ->
-
+        binding.ledSwitch.setOnCheckedChangeListener { _, isChecked ->
+            val req = ControlRequest(deviceAEName+"_led", "DATA", if (isChecked) "1" else "0")
+            req.setReceiver(object : IReceived {
+                override fun getResponseBody(msg: String) {
+                    handler.execute {
+                        Log.d(TAG, "************** LED Light Control *************\r\n\r\n$msg")
+                        val pxml = ParseElementXml()
+                        CoroutineScope(Dispatchers.IO).launch {
+                            val registeredAE = db.registeredAEDAO().get(deviceAEName)
+                            Log.d(TAG, "RegisteredAE: ${registeredAE.isLedTurnedOn}")
+                            registeredAE.isLedTurnedOn = pxml.GetElementXml(msg, "con") != "0"
+                            db.registeredAEDAO().update(registeredAE)
+                        }
+                    }
+                }
+            })
+            req.start()
         }
-        binding.lockSwitch.setOnCheckedChangeListener { buttonView, isChecked ->
-
+        binding.lockSwitch.setOnCheckedChangeListener { _, isChecked ->
+            val req = ControlRequest(deviceAEName+"_lock", "DATA", if (isChecked) "1" else "0")
+            req.setReceiver(object : IReceived {
+                override fun getResponseBody(msg: String) {
+                    handler.execute {
+                        Log.d(TAG, "************** Lock Control *************\r\n\r\n$msg")
+                        val pxml = ParseElementXml()
+                        CoroutineScope(Dispatchers.IO).launch {
+                            val registeredAE = db.registeredAEDAO().get(deviceAEName)
+                            Log.d(TAG, "RegisteredAE: ${registeredAE.isLocked}")
+                            registeredAE.isLocked = pxml.GetElementXml(msg, "con") != "0"
+                            db.registeredAEDAO().update(registeredAE)
+                        }
+                    }
+                }
+            })
+            req.start()
         }
 
+        CoroutineScope(Dispatchers.IO + job).launch{
+            getDeviceStatus()
+            while(true){
+                getAnomalyDetection()
+                delay(10000)
+            }
+        }
         setContentView(binding.root)
+    }
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        callback = object: OnBackPressedCallback(true){
+            override fun handleOnBackPressed() {
+                val bundle = intent.extras
+                CoroutineScope(Dispatchers.IO).launch {
+                    bundle!!.putParcelable("SERVICE_AE_OBJECT", db.registeredAEDAO().get(deviceAEName))
+                }.invokeOnCompletion {
+                    intent.putExtras(bundle!!)
+                    setResult(RESULT_OK, intent)
+                    finish()
+                }
+            }
+        }
+
+        onBackPressedDispatcher.addCallback(this, callback)
     }
 
     override fun onStart() {
         super.onStart()
         binding.mapView.onStart()
+        if(job.isCancelled) job.start()
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
@@ -111,29 +187,25 @@ class DeviceControlActivity: AppCompatActivity(), OnMapReadyCallback {
     override fun onStop() {
         super.onStop()
         binding.mapView.onStop()
-        if(isConnectionOpened) {
-            createPresMQTT(false, serviceAEName = deviceAEName+"_pres")
-            //createGPSMQTT(false, serviceAEName = deviceAEName+"_loc")
-        }
+        if(!job.isCompleted) job.cancel()
     }
 
     override fun onResume() {
         super.onResume()
         binding.mapView.onResume()
+        if(job.isCancelled) job.start()
     }
 
     override fun onPause() {
         super.onPause()
         binding.mapView.onPause()
+        if(!job.isCompleted) job.cancel()
     }
 
     override fun onDestroy() {
         super.onDestroy()
         binding.mapView.onDestroy()
-        if(isConnectionOpened) {
-            createPresMQTT(false, serviceAEName = deviceAEName+"_pres")
-            //createGPSMQTT(false, serviceAEName = deviceAEName+"_loc")
-        }
+        if(!job.isCompleted) job.cancel()
     }
 
     override fun onLowMemory() {
@@ -148,220 +220,83 @@ class DeviceControlActivity: AppCompatActivity(), OnMapReadyCallback {
     }
 
     // Retrieve Actuators status
-    private fun getDeviceStatus(){
-        CoroutineScope(Dispatchers.IO).launch {
+    private suspend fun getDeviceStatus() = coroutineScope {
+        val pxml = ParseElementXml()
+        var isLedOn = false
+        var isLocked = false
+        val data = async { db.registeredAEDAO().get(deviceAEName) }
+        val led = async {
             val reqLed = RetrieveRequest(deviceAEName+"_led", "DATA")
-            val reqLock = RetrieveRequest(deviceAEName+"_lock", "DATA")
             reqLed.setReceiver(object : IReceived {
                 override fun getResponseBody(msg: String) {
-                    handler.post {
-                        val pxml = ParseElementXml()
-                        binding.ledSwitch.isChecked = pxml.GetElementXml(msg, "con").toBoolean()
+                    handler.execute {
+                        isLedOn = pxml.GetElementXml(msg, "con") != "0"
                     }
                 }
             })
+            reqLed.start(); reqLed.join()
+        }
+        val lock = async {
+            val reqLock = RetrieveRequest(deviceAEName+"_lock", "DATA")
             reqLock.setReceiver(object : IReceived {
                 override fun getResponseBody(msg: String) {
-                    handler.post {
-                        val pxml = ParseElementXml()
-                        binding.lockSwitch.isChecked = pxml.GetElementXml(msg, "con").toBoolean()
+                    handler.execute {
+                        isLocked = pxml.GetElementXml(msg, "con") != "0"
                     }
                 }
             })
-            reqLed.start()
-            reqLock.start()
+            reqLock.start(); reqLock.join()
+        }
+
+        withContext(Dispatchers.Main){
+            // Asynchronous Data Retrieval Process
+            val registeredAE = data.await()
+            led.await()
+            lock.await()
+
+            // Change UI
+            binding.ledSwitch.isChecked = isLedOn
+            binding.lockSwitch.isChecked = isLocked
+            binding.textView2.text = if(isLocked) "Locked" else "Unlocked"
+
+            // Update Database
+            registeredAE.isLedTurnedOn = isLedOn
+            registeredAE.isLocked = isLocked
+            db.registeredAEDAO().update(registeredAE)
         }
     }
 
-    // --- MQTT Functions ---
-    /* MQTT Subscription */
-    private fun createGPSMQTT(mqttStart: Boolean, serviceAEName: String) {
-        if (mqttStart && gpsMqttClient == null) {
-            /* Subscription Resource Create to Yellow Turtle */
-            val subcribeResource = CreateSubscribeResource(serviceAEName)
-            subcribeResource.setReceiver(object : IReceived {
-                override fun getResponseBody(msg: String) {
-                    handler.post {
-                        Log.d(TAG,"**** Subscription Resource Create 요청 결과 ****\r\n\r\n$msg")
-                    }
+    // Retrieve Anomaly Detection State
+    private suspend fun getAnomalyDetection() = coroutineScope {
+        val data = async { db.registeredAEDAO().get(deviceAEName) }
+
+        withContext(Dispatchers.Main) {
+            val registeredAE = data.await()
+            Log.d(TAG, "Got Information from Database: ${registeredAE.applicationName} -> ${registeredAE.isTriggered}")
+
+            if(registeredAE.isTriggered) {
+                binding.imageView3.setImageResource(R.drawable.icon_warning)
+                binding.textView2.text = "Anomaly Detected!"
+            } else{
+                binding.imageView3.setImageResource(R.drawable.icon_check)
+                binding.textView2.text = "No Anomaly Detected!"
+            }
+        }
+    }
+
+    // Retrieve GPS Location of device
+    private suspend fun getGPSLocation() = coroutineScope{
+        val reqLocation = RetrieveRequest(deviceAEName+"_loc", "DATA")
+        reqLocation.setReceiver(object : IReceived {
+            override fun getResponseBody(msg: String) {
+                handler.execute{
+                    val pxml = ParseElementXml()
+                    //TODO: Get location data and invalidate map location info.
                 }
-            })
-            subcribeResource.start()
-
-            /* MQTT Subscribe */
-            gpsMqttClient = MqttAndroidClient(
-                this.applicationContext,
-                "tcp://" + csebase.host + ":" + csebase.MQTTPort,
-                MqttClient.generateClientId()
-            )
-            gpsMqttClient!!.setCallback(gpsMqttCallback)
-            try {
-                val token = gpsMqttClient!!.connect()
-                token.actionCallback = gpsIMqttActionListener
-            } catch (e: MqttException) {
-                e.printStackTrace()
             }
-        } else {
-            /* MQTT unSubscribe or Client Close */
-            gpsMqttClient?.unsubscribe(MQTT_Req_Topic)
-            gpsMqttClient?.close()
-            gpsMqttClient = null
-        }
+        })
+        reqLocation.start()
     }
-    /* MQTT Listener */
-    private val gpsIMqttActionListener: IMqttActionListener = object : IMqttActionListener {
-        override fun onSuccess(asyncActionToken: IMqttToken) {
-            Log.d(TAG, "onSuccess")
-            val payload = ""
-            val mqttQos = 1 /* 0: NO QoS, 1: No Check , 2: Each Check */
-
-            val message = MqttMessage(payload.toByteArray())
-            Log.d(TAG, "${message}")
-            try {
-                gpsMqttClient!!.subscribe(MQTT_Req_Topic, mqttQos)
-            } catch (e: MqttException) {
-                e.printStackTrace()
-            }
-        }
-
-        override fun onFailure(asyncActionToken: IMqttToken, exception: Throwable) {
-            Log.d(TAG, "onFailure")
-        }
-    }
-    /* MQTT Broker Message Received */
-    private val gpsMqttCallback: MqttCallback = object : MqttCallback {
-        override fun connectionLost(cause: Throwable) {
-            Log.d(TAG, "connectionLost")
-        }
-
-        @Throws(Exception::class)
-        override fun messageArrived(topic: String, message: MqttMessage) {
-            Log.d(TAG, "messageArrived")
-
-            //binding.textViewData.text = ""
-            //binding.textViewData.text = """
-            //    **** MQTT CO2 실시간 조회 ****
-
-            //    ${message.toString().replace(",".toRegex(), "\n")}
-            //    """.trimIndent()
-            Log.d(TAG, "Notify ResMessage:$message")
-
-            /* Json Type Response Parsing */
-            val retrqi = MqttClientRequestParser.notificationJsonParse(message.toString())
-            Log.d(TAG, "RQI[$retrqi]")
-
-            val responseMessage = MqttClientRequest.notificationResponse(retrqi)
-            Log.d(TAG, "Recv OK ResMessage [$responseMessage]")
-
-            /* Make json for MQTT Response Message */
-            val res_message = MqttMessage(responseMessage.toByteArray())
-
-            try {
-                gpsMqttClient!!.publish(MQTT_Resp_Topic, res_message)
-            } catch (e: MqttException) {
-                e.printStackTrace()
-            }
-        }
-
-        override fun deliveryComplete(token: IMqttDeliveryToken) {
-            Log.d(TAG, "deliveryComplete")
-        }
-    }
-
-    /* MQTT Subscription */
-    private fun createPresMQTT(mqttStart: Boolean, serviceAEName: String) {
-        if (mqttStart && presMqttClient == null) {
-            /* Subscription Resource Create to Yellow Turtle */
-            val subcribeResource = CreateSubscribeResource(serviceAEName)
-            subcribeResource.setReceiver(object : IReceived {
-                override fun getResponseBody(msg: String) {
-                    handler.post {
-                        Log.d(TAG,"**** Subscription Resource Create 요청 결과 ****\r\n\r\n$msg")
-                    }
-                }
-            })
-            subcribeResource.start()
-
-            /* MQTT Subscribe */
-            presMqttClient = MqttAndroidClient(
-                this.applicationContext,
-                "tcp://" + csebase.host + ":" + csebase.MQTTPort,
-                MqttClient.generateClientId()
-            )
-            presMqttClient!!.setCallback(presMqttCallback)
-            try {
-                val token = presMqttClient!!.connect()
-                token.actionCallback = presIMqttActionListener
-            } catch (e: MqttException) {
-                e.printStackTrace()
-            }
-        } else {
-            /* MQTT unSubscribe or Client Close */
-            presMqttClient?.unsubscribe(MQTT_Req_Topic)
-            presMqttClient?.close()
-            presMqttClient = null
-        }
-    }
-    /* MQTT Listener */
-    private val presIMqttActionListener: IMqttActionListener = object : IMqttActionListener {
-        override fun onSuccess(asyncActionToken: IMqttToken) {
-            Log.d(TAG, "onSuccess")
-            val payload = ""
-            val mqttQos = 1 /* 0: NO QoS, 1: No Check , 2: Each Check */
-
-            val message = MqttMessage(payload.toByteArray())
-            Log.d(TAG, "${message}")
-            try {
-                presMqttClient!!.subscribe(MQTT_Req_Topic, mqttQos)
-            } catch (e: MqttException) {
-                e.printStackTrace()
-            }
-        }
-
-        override fun onFailure(asyncActionToken: IMqttToken, exception: Throwable) {
-            Log.d(TAG, "onFailure")
-        }
-    }
-    /* MQTT Broker Message Received */
-    private val presMqttCallback: MqttCallback = object : MqttCallback {
-        override fun connectionLost(cause: Throwable) {
-            Log.d(TAG, "connectionLost")
-        }
-
-        //@Throws(Exception::class)
-        override fun messageArrived(topic: String, message: MqttMessage) {
-            Log.d(TAG, "messageArrived")
-
-            //binding.textViewData.text = ""
-            //binding.textViewData.text = """
-            //    **** MQTT CO2 실시간 조회 ****
-
-            //    ${message.toString().replace(",".toRegex(), "\n")}
-            //    """.trimIndent()
-            Log.d(TAG, "Notify ResMessage:$message")
-
-            /* Json Type Response Parsing */
-            val retrqi = MqttClientRequestParser.notificationJsonParse(message.toString())
-            Log.d(TAG, "RQI[$retrqi]")
-
-            val responseMessage = MqttClientRequest.notificationResponse(retrqi)
-            Log.d(TAG, "Recv OK ResMessage [$responseMessage]")
-
-            /* Make json for MQTT Response Message */
-            val res_message = MqttMessage(responseMessage!!.toByteArray())
-
-            try {
-                presMqttClient!!.publish(MQTT_Resp_Topic, res_message)
-            } catch (e: MqttException) {
-                Log.d(TAG, "${e.message}")
-            }
-        }
-
-        override fun deliveryComplete(token: IMqttDeliveryToken) {
-            Log.d(TAG, "deliveryComplete")
-        }
-    }
-    // ----------------------
 
     // --- Retrieve Actions ---
     /* Retrieve Sensor Data */
@@ -487,74 +422,6 @@ class DeviceControlActivity: AppCompatActivity(), OnMapReadyCallback {
         }
     }
     // ----------------------
-
-    // --- Subscription Actions ---
-    /* Subscribe Co2 Content Resource */
-    internal inner class CreateSubscribeResource(private val serviceAEName: String) : Thread() {
-        private val LOG: Logger = Logger.getLogger(
-            CreateSubscribeResource::class.java.name
-        )
-        private var receiver: IReceived? = null
-        private val container_name = "DATA" //change to control container name
-
-        var subscribeInstance: ContentSubscribeObject = ContentSubscribeObject()
-
-        init {
-            subscribeInstance.setUrl(csebase.host)
-            subscribeInstance.setResourceName(ae.aEid + "_rn")
-            subscribeInstance.setPath(ae.aEid + "_sub")
-            subscribeInstance.setOrigin_id(ae.aEid)
-        }
-
-        fun setReceiver(hanlder: IReceived?) {
-            this.receiver = hanlder
-        }
-
-        override fun run() {
-            try {
-                val sb = csebase.serviceUrl + "/" + serviceAEName + "/" + container_name
-
-                val mUrl = URL(sb)
-
-                val conn = mUrl.openConnection() as HttpURLConnection
-                conn.requestMethod = "POST"
-                conn.doInput = true
-                conn.doOutput = true
-                conn.useCaches = false
-                conn.instanceFollowRedirects = false
-
-                conn.setRequestProperty("Accept", "application/xml")
-                conn.setRequestProperty("Content-Type", "application/vnd.onem2m-res+xml; ty=23")
-                conn.setRequestProperty("locale", "ko")
-                conn.setRequestProperty("X-M2M-RI", "12345")
-                conn.setRequestProperty("X-M2M-Origin", ae.aEid)
-
-                val reqmqttContent = subscribeInstance.makeXML()
-                conn.setRequestProperty("Content-Length", reqmqttContent.length.toString())
-
-                val dos = DataOutputStream(conn.outputStream)
-                dos.write(reqmqttContent.toByteArray())
-                dos.flush()
-                dos.close()
-
-                val `in` = BufferedReader(InputStreamReader(conn.inputStream))
-
-                var resp = ""
-                var strLine = ""
-                while ((`in`.readLine().also { strLine = it }) != null) {
-                    resp += strLine
-                }
-
-                if (resp !== "") {
-                    receiver!!.getResponseBody(resp)
-                }
-                conn.disconnect()
-            } catch (exp: Exception) {
-                LOG.log(Level.SEVERE, exp.message)
-            }
-        }
-    }
-    // ----------------------------
 
     companion object{
         private const val TAG = "DEVICE_CONTROL_ACTIVITY"
