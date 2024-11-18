@@ -31,38 +31,12 @@ import java.util.logging.Level
 import java.util.logging.Logger
 
 // TODO: Make things Work!!! -> Client should be single object not the list(Change it!) -> Foreground service is mandatory
-class MqttWorker(
-    context: Context, workerParams: WorkerParameters, private val deviceAEName: String,
-    private val mqttReqTopic: String, private val mqttRespTopic: String
-) : Worker(context, workerParams) {
+class MqttWorker(context: Context, workerParams: WorkerParameters) : Worker(context, workerParams) {
     private var mqttClient: MqttAndroidClient? = null
     private var handler = Handler(Looper.myLooper()!!)
     private lateinit var db: RegisteredAEDatabase
 
     override fun doWork(): Result {
-        db = RegisteredAEDatabase.getInstance(applicationContext)
-        return createSubscribeResource(deviceAEName+"_pres", mqttReqTopic = mqttReqTopic, mqttRespTopic = mqttRespTopic)
-    }
-
-    /* Create Subscription Resource and Connect to server by using MQTT Protocol */
-    private fun createSubscribeResource(deviceAEName: String, mqttReqTopic: String, mqttRespTopic: String): Result {
-        /* Subscription Resource Create */
-        val subscribeResource = CreateSubscribeResource(deviceAEName)
-        subscribeResource.setReceiver(object : IReceived {
-            override fun getResponseBody(msg: String) {
-                handler.post {
-                    Log.d(TAG, "**** Subscription Resource Create 요청 결과 ****\r\n\r\n$msg")
-                }
-            }
-        })
-        subscribeResource.start(); subscribeResource.join()
-
-        try{
-            createMQTT(true, mqttReqTopic = mqttReqTopic, mqttRespTopic = mqttRespTopic)
-        } catch (e: MqttException){
-            Log.d(TAG, "Something is wrong!: ${e.cause}, ${e.message}")
-            return Result.failure()
-        }
         return Result.success()
     }
 

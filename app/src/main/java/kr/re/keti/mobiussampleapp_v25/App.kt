@@ -4,12 +4,6 @@ import android.app.Application
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.util.Log
-import androidx.lifecycle.MutableLiveData
-import androidx.work.OneTimeWorkRequestBuilder
-import androidx.work.WorkRequest
-import androidx.work.WorkerParameters
-import info.mqtt.android.service.MqttAndroidClient
-import kr.re.keti.mobiussampleapp_v25.workers.MqttWorker
 
 class App: Application() {
     override fun onCreate() {
