@@ -19,7 +19,6 @@ class App: Application() {
     }
 
     companion object {
-        var isConnected = false
         const val CHANNEL_ID = "ANOMALY_DETECTION_SERVICE_CHANNEL"
     }
 }

@@ -32,6 +32,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kr.re.keti.mobiussampleapp_v25.R
+import kr.re.keti.mobiussampleapp_v25.data.ContentSubscribeObject
 import kr.re.keti.mobiussampleapp_v25.database.RegisteredAE
 import kr.re.keti.mobiussampleapp_v25.databinding.ActivityMainBinding
 import kr.re.keti.mobiussampleapp_v25.database.RegisteredAEDatabase
@@ -154,7 +155,7 @@ class MainActivity : AppCompatActivity() {
     // --- Custom Methods ---
     /* AE Create for Android AE */
     private fun getAEInfo() {
-        Mobius_Address = "172.30.128.1"
+        Mobius_Address = "192.168.55.35"
 
         csebase.setInfo(Mobius_Address, "7579", "Mobius", MQTTPort)
 
@@ -467,6 +468,73 @@ class MainActivity : AppCompatActivity() {
             }
         }
     }
+
+    /* Subscribe Presence Content Resource */
+    internal inner class CreateSubscribeResource(private val serviceAEName: String) : Thread() {
+        private val LOG: Logger = Logger.getLogger(
+            CreateSubscribeResource::class.java.name
+        )
+        private var receiver: IReceived? = null
+        private val container_name = "DATA" //change to control container name
+
+        var subscribeInstance: ContentSubscribeObject = ContentSubscribeObject()
+
+        init {
+            subscribeInstance.setUrl(csebase.host)
+            subscribeInstance.setResourceName(ae.aEid + "_rn")
+            subscribeInstance.setPath(ae.aEid + "_sub")
+            subscribeInstance.setOrigin_id(ae.aEid)
+        }
+
+        fun setReceiver(hanlder: IReceived?) {
+            this.receiver = hanlder
+        }
+
+        override fun run() {
+            try {
+                val sb = csebase.serviceUrl + "/" + serviceAEName + "/" + container_name
+
+                val mUrl = URL(sb)
+
+                val conn = mUrl.openConnection() as HttpURLConnection
+                conn.requestMethod = "POST"
+                conn.doInput = true
+                conn.doOutput = true
+                conn.useCaches = false
+                conn.instanceFollowRedirects = false
+
+                conn.setRequestProperty("Accept", "application/xml")
+                conn.setRequestProperty("Content-Type", "application/vnd.onem2m-res+xml; ty=23")
+                conn.setRequestProperty("locale", "ko")
+                conn.setRequestProperty("X-M2M-RI", "12345")
+                conn.setRequestProperty("X-M2M-Origin", ae.aEid)
+
+                val reqmqttContent = subscribeInstance.makeXML()
+                conn.setRequestProperty("Content-Length", reqmqttContent.length.toString())
+
+                val dos = DataOutputStream(conn.outputStream)
+                dos.write(reqmqttContent.toByteArray())
+                dos.flush()
+                dos.close()
+
+                val `in` = BufferedReader(InputStreamReader(conn.inputStream))
+
+                var resp = ""
+                var strLine = ""
+                while ((`in`.readLine().also { strLine = it }) != null) {
+                    resp += strLine
+                }
+
+                if (resp !== "") {
+                    receiver!!.getResponseBody(resp)
+                }
+                conn.disconnect()
+            } catch (exp: Exception) {
+                LOG.log(Level.SEVERE, exp.message)
+            }
+        }
+    }
+    // ----------------------------
 
     /* constant values */
     companion object {
