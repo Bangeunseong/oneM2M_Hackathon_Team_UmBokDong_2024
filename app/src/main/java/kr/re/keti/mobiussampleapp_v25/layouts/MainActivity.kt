@@ -24,7 +24,6 @@ import kr.re.keti.mobiussampleapp_v25.data.AE
 import kr.re.keti.mobiussampleapp_v25.data.ApplicationEntityObject
 import kr.re.keti.mobiussampleapp_v25.data.CSEBase
 import kr.re.keti.mobiussampleapp_v25.utils.ParseElementXml
-import info.mqtt.android.service.MqttAndroidClient
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -34,7 +33,6 @@ import kotlinx.coroutines.withContext
 import kr.re.keti.mobiussampleapp_v25.R
 import kr.re.keti.mobiussampleapp_v25.database.RegisteredAE
 import kr.re.keti.mobiussampleapp_v25.databinding.ActivityMainBinding
-import kr.re.keti.mobiussampleapp_v25.database.RegisteredAEDatabase
 import timber.log.Timber
 import java.io.BufferedReader
 import java.io.DataOutputStream
@@ -154,7 +152,7 @@ class MainActivity : AppCompatActivity() {
     // --- Custom Methods ---
     /* AE Create for Android AE */
     private fun getAEInfo() {
-        Mobius_Address = "192.168.55.35"
+        Mobius_Address = "172.30.128.1"
 
         csebase.setInfo(Mobius_Address, "7579", "Mobius", MQTTPort)
 
