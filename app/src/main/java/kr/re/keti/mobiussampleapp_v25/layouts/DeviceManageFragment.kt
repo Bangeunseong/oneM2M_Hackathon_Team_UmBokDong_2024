@@ -132,7 +132,7 @@ class DeviceManageFragment: Fragment() {
     /* Control Device Lock State when pressing lock btn */
     private suspend fun controlDeviceLockStatus(device: RegisteredAE, position: Int) = coroutineScope{
         val controlLock = async {
-            val reqLock = ControlRequest(device.applicationName+"_lock", "DATA", if(device.isLedTurnedOn) "0" else "1")
+            val reqLock = ControlRequest(device.applicationName+"_lock", "DATA", if(device.isLocked) "0" else "1")
             reqLock.setReceiver(object : IReceived{
                 override fun getResponseBody(msg: String) {
                     val pxml = ParseElementXml()

@@ -21,7 +21,6 @@ class App: Application() {
     }
 
     companion object {
-        val mqttAndroidClient = mutableListOf<MqttAndroidClient>()
         val isConnected = false
         const val CHANNEL_ID = "ANOMALY_DETECTION_SERVICE_CHANNEL"
     }

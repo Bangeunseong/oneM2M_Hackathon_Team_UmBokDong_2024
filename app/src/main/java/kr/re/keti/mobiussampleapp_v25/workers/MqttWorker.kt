@@ -7,12 +7,7 @@ import android.util.Log
 import androidx.work.Worker
 import androidx.work.WorkerParameters
 import info.mqtt.android.service.MqttAndroidClient
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kr.re.keti.mobiussampleapp_v25.App
 import kr.re.keti.mobiussampleapp_v25.data.ContentSubscribeObject
-import kr.re.keti.mobiussampleapp_v25.database.RegisteredAE
 import kr.re.keti.mobiussampleapp_v25.database.RegisteredAEDatabase
 import kr.re.keti.mobiussampleapp_v25.layouts.MainActivity.Companion.ae
 import kr.re.keti.mobiussampleapp_v25.layouts.MainActivity.Companion.csebase
@@ -35,18 +30,17 @@ import java.net.URL
 import java.util.logging.Level
 import java.util.logging.Logger
 
-// TODO: Make things Work!!!
+// TODO: Make things Work!!! -> Client should be single object not the list(Change it!)
 class MqttWorker(
     context: Context, workerParams: WorkerParameters, private val deviceAEName: String,
     private val mqttReqTopic: String, private val mqttRespTopic: String
 ) : Worker(context, workerParams) {
-    private var mqttClientList: MutableList<MqttAndroidClient>? = null
+    private var mqttClient: MqttAndroidClient? = null
     private var handler = Handler(Looper.myLooper()!!)
     private lateinit var db: RegisteredAEDatabase
 
     override fun doWork(): Result {
         db = RegisteredAEDatabase.getInstance(applicationContext)
-        mqttClientList = App.mqttAndroidClient
         return createSubscribeResource(deviceAEName+"_pres", mqttReqTopic = mqttReqTopic, mqttRespTopic = mqttRespTopic)
     }
 
@@ -63,15 +57,8 @@ class MqttWorker(
         })
         subscribeResource.start(); subscribeResource.join()
 
-        val mqttClient = MqttAndroidClient(
-            applicationContext,
-            "tcp://" + csebase.host + ":" + csebase.MQTTPort,
-            MqttClient.generateClientId()
-        )
-
         try{
-            createMQTT(true, mqttClient, mqttReqTopic = mqttReqTopic, mqttRespTopic = mqttRespTopic)
-            mqttClientList!!.add(mqttClient)
+            createMQTT(true, mqttReqTopic = mqttReqTopic, mqttRespTopic = mqttRespTopic)
         } catch (e: MqttException){
             Log.d(TAG, "Something is wrong!: ${e.cause}, ${e.message}")
             return Result.failure()
@@ -80,14 +67,20 @@ class MqttWorker(
     }
 
     /* MQTT Subscription */
-    private fun createMQTT(mqttStart: Boolean, mqttClient: MqttAndroidClient, mqttReqTopic: String, mqttRespTopic: String) {
-        if (mqttStart) {
+    private fun createMQTT(mqttStart: Boolean, mqttReqTopic: String, mqttRespTopic: String) {
+        if (mqttStart && mqttClient == null) {
+            mqttClient = MqttAndroidClient(
+                applicationContext,
+                "tcp://" + csebase.host + ":" + csebase.MQTTPort,
+                MqttClient.generateClientId()
+            )
+
             /* MQTT Subscribe */
-            mqttClient.setCallback(object : MqttCallback{
+            mqttClient!!.setCallback(object : MqttCallback{
                 override fun connectionLost(cause: Throwable?) {
                     Log.d(TAG, "connectionLost")
                     try{
-                        if(mqttStart) mqttClient.reconnect()
+                        if(mqttStart) mqttClient!!.reconnect()
                     } catch (e: MqttException){
                         e.printStackTrace()
                     }
@@ -108,7 +101,7 @@ class MqttWorker(
                     val res_message = MqttMessage(responseMessage.toByteArray())
 
                     try {
-                        mqttClient.publish(mqttRespTopic, res_message)
+                        mqttClient!!.publish(mqttRespTopic, res_message)
                     } catch (e: MqttException) {
                         e.printStackTrace()
                     }
@@ -118,7 +111,7 @@ class MqttWorker(
                 }
             })
             try {
-                val token = mqttClient.connect(MqttConnectOptions())
+                val token = mqttClient!!.connect(MqttConnectOptions())
                 token.actionCallback = object : IMqttActionListener{
                     override fun onSuccess(asyncActionToken: IMqttToken?) {
                         Log.d(TAG, "onSuccess")
@@ -128,7 +121,7 @@ class MqttWorker(
                         val message = MqttMessage(payload.toByteArray())
                         Log.d(TAG, "${message}")
                         try {
-                            mqttClient.subscribe(mqttReqTopic, mqttQos)
+                            mqttClient!!.subscribe(mqttReqTopic, mqttQos)
                         } catch (e: MqttException) {
                             e.printStackTrace()
                         }
@@ -142,9 +135,9 @@ class MqttWorker(
             }
         } else {
             /* MQTT unSubscribe or Client Close */
-            if(mqttClient.isConnected){
+            if(mqttClient!!.isConnected){
                 try {
-                    val token = mqttClient.disconnect()
+                    val token = mqttClient!!.disconnect()
                     token.actionCallback = object : IMqttActionListener{
                         override fun onSuccess(asyncActionToken: IMqttToken?) {
                             Log.d(TAG, "Successfully Disconnected!")
