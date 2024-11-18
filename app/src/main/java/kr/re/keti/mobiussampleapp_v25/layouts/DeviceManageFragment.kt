@@ -16,15 +16,20 @@ import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kr.re.keti.mobiussampleapp_v25.R
 import kr.re.keti.mobiussampleapp_v25.data.ContentInstanceObject
 import kr.re.keti.mobiussampleapp_v25.database.RegisteredAE
+import kr.re.keti.mobiussampleapp_v25.database.RegisteredAEDatabase
 import kr.re.keti.mobiussampleapp_v25.databinding.FragmentDeviceManageBinding
 import kr.re.keti.mobiussampleapp_v25.databinding.ItemRecyclerDeviceMonitorBinding
 import kr.re.keti.mobiussampleapp_v25.layouts.MainActivity.Companion.ae
 import kr.re.keti.mobiussampleapp_v25.layouts.MainActivity.Companion.csebase
 import kr.re.keti.mobiussampleapp_v25.layouts.MainActivity.IReceived
+import kr.re.keti.mobiussampleapp_v25.utils.ParseElementXml
 import java.io.BufferedReader
 import java.io.DataOutputStream
 import java.io.InputStreamReader
@@ -33,71 +38,7 @@ import java.net.URL
 import java.util.logging.Level
 import java.util.logging.Logger
 
-//TODO: Change icon when control led and lock state also create controlling led and lock state method
 class DeviceManageFragment: Fragment() {
-    // Inner Class For Decorating Recycler View of Device List
-    internal inner class ItemPadding(private val divWidth: Int?, private val divHeight: Int?) : RecyclerView.ItemDecoration() {
-        override fun getItemOffsets(
-            outRect: Rect, view: View,
-            parent: RecyclerView, state: RecyclerView.State
-        ) {
-            super.getItemOffsets(outRect, view, parent, state)
-            if (divWidth != null) {
-                outRect.left = divWidth
-                outRect.right = divWidth
-            }
-            if(divHeight != null) {
-                outRect.top = divHeight
-                outRect.bottom = divHeight
-            }
-        }
-    }
-
-    // Inner Class For Setting Adapter in Device Recycler View
-    inner class DeviceAdapter(private val deviceList: MutableList<RegisteredAE>) : RecyclerView.Adapter<DeviceAdapter.ViewHolder>() {
-        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
-            return ViewHolder(
-                ItemRecyclerDeviceMonitorBinding.inflate(
-                    LayoutInflater.from(parent.context),
-                    parent,
-                    false
-                )
-            )
-        }
-
-        override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-            holder.bind(deviceList[position])
-        }
-
-        override fun getItemCount(): Int {
-            return deviceList.size
-        }
-
-        inner class ViewHolder(private val binding: ItemRecyclerDeviceMonitorBinding) :
-            RecyclerView.ViewHolder(binding.root) {
-            fun bind(device: RegisteredAE) {
-                Log.d("DeviceManageFragment","${device.applicationName}, ${device.isLedTurnedOn}, ${device.isLocked}")
-                binding.deviceName.text = device.applicationName
-                CoroutineScope(Dispatchers.IO).launch {
-                    binding.btnLock.setImageResource(if(device.isLocked) R.drawable.ic_lock else R.drawable.ic_unlock)
-                    binding.btnLight.setImageResource(if(device.isLedTurnedOn) R.drawable.ic_light_on else R.drawable.ic_light_off)
-                    binding.btnLight.invalidate()
-                    binding.btnLock.invalidate()
-                }
-                binding.itemLayout.setOnClickListener {
-                    val intent = Intent(context, DeviceControlActivity::class.java)
-                    val bundle = Bundle()
-                    bundle.putString("SERVICE_AE", device.applicationName)
-                    bundle.putString("MQTT_REQ_TOPIC", viewModel.mqttReqTopic)
-                    bundle.putString("MQTT_RESP_TOPIC", viewModel.mqttRespTopic)
-                    bundle.putInt("SERVICE_AE_POSITION", layoutPosition)
-                    intent.putExtras(bundle)
-                    controlActivityLauncher.launch(intent)
-                }
-            }
-        }
-    }
-
     private var _binding: FragmentDeviceManageBinding? = null
     private val binding get() = _binding!!
 
@@ -164,7 +105,56 @@ class DeviceManageFragment: Fragment() {
         _adapter = null
     }
 
-    // --- Control Actions ---
+    // --- Custom Methods ---
+    /* Control Device Led Status when pressing led btn */
+    private suspend fun controlDeviceLedStatus(device: RegisteredAE, position: Int) = coroutineScope{
+        val controlLed = async {
+            val reqLed = ControlRequest(device.applicationName+"_led", "DATA", if(device.isLedTurnedOn) "0" else "1")
+            reqLed.setReceiver(object : IReceived{
+                override fun getResponseBody(msg: String) {
+                    val pxml = ParseElementXml()
+                    device.isLedTurnedOn = pxml.GetElementXml(msg, "con") != "0"
+                    viewModel.getDeviceList()[position] = device
+                    CoroutineScope(Dispatchers.IO).launch {
+
+                        viewModel.database.registeredAEDAO().update(device)
+                    }
+                }
+            })
+            reqLed.start(); reqLed.join()
+        }
+
+        withContext(Dispatchers.Main){
+            controlLed.await()
+            viewModel.updateServiceAE(position)
+        }
+    }
+    /* Control Device Lock State when pressing lock btn */
+    private suspend fun controlDeviceLockStatus(device: RegisteredAE, position: Int) = coroutineScope{
+        val controlLock = async {
+            val reqLock = ControlRequest(device.applicationName+"_lock", "DATA", if(device.isLedTurnedOn) "0" else "1")
+            reqLock.setReceiver(object : IReceived{
+                override fun getResponseBody(msg: String) {
+                    val pxml = ParseElementXml()
+                    device.isLocked = pxml.GetElementXml(msg, "con") != "0"
+                    viewModel.getDeviceList()[position] = device
+                    CoroutineScope(Dispatchers.IO).launch {
+
+                        viewModel.database.registeredAEDAO().update(device)
+                    }
+                }
+            })
+            reqLock.start(); reqLock.join()
+        }
+
+        withContext(Dispatchers.Main){
+            controlLock.await()
+            viewModel.updateServiceAE(position)
+        }
+    }
+    // ----------------------
+
+    // --- Inner Classes ---
     /* Request Control LED */
     internal inner class ControlRequest(serviceAEName: String, containerName: String, comm: String) : Thread() {
         private val LOG: Logger = Logger.getLogger(
@@ -226,6 +216,77 @@ class DeviceManageFragment: Fragment() {
                 conn.disconnect()
             } catch (exp: Exception) {
                 LOG.log(Level.SEVERE, exp.message)
+            }
+        }
+    }
+    /* Inner Class For Decorating Recycler View of Device List */
+    internal inner class ItemPadding(private val divWidth: Int?, private val divHeight: Int?) : RecyclerView.ItemDecoration() {
+        override fun getItemOffsets(
+            outRect: Rect, view: View,
+            parent: RecyclerView, state: RecyclerView.State
+        ) {
+            super.getItemOffsets(outRect, view, parent, state)
+            if (divWidth != null) {
+                outRect.left = divWidth
+                outRect.right = divWidth
+            }
+            if(divHeight != null) {
+                outRect.top = divHeight
+                outRect.bottom = divHeight
+            }
+        }
+    }
+    /* Inner Class For Setting Adapter in Device Recycler View */
+    inner class DeviceAdapter(private val deviceList: MutableList<RegisteredAE>) : RecyclerView.Adapter<DeviceAdapter.ViewHolder>() {
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
+            return ViewHolder(
+                ItemRecyclerDeviceMonitorBinding.inflate(
+                    LayoutInflater.from(parent.context),
+                    parent,
+                    false
+                )
+            )
+        }
+
+        override fun onBindViewHolder(holder: ViewHolder, position: Int) {
+            holder.bind(deviceList[position])
+        }
+
+        override fun getItemCount(): Int {
+            return deviceList.size
+        }
+
+        inner class ViewHolder(private val binding: ItemRecyclerDeviceMonitorBinding) :
+            RecyclerView.ViewHolder(binding.root) {
+            fun bind(device: RegisteredAE) {
+                Log.d("DeviceManageFragment","${device.applicationName}, ${device.isLedTurnedOn}, ${device.isLocked}")
+                binding.deviceName.text = device.applicationName
+                CoroutineScope(Dispatchers.IO).launch {
+                    binding.btnLock.setImageResource(if(device.isLocked) R.drawable.ic_lock else R.drawable.ic_unlock)
+                    binding.btnLight.setImageResource(if(device.isLedTurnedOn) R.drawable.ic_light_on else R.drawable.ic_light_off)
+                    binding.btnLight.invalidate()
+                    binding.btnLock.invalidate()
+                }
+                binding.btnLight.setOnClickListener {
+                    CoroutineScope(Dispatchers.IO).launch {
+                        controlDeviceLedStatus(device, layoutPosition)
+                    }
+                }
+                binding.btnLock.setOnClickListener {
+                    CoroutineScope(Dispatchers.IO).launch {
+                        controlDeviceLockStatus(device, layoutPosition)
+                    }
+                }
+                binding.itemLayout.setOnClickListener {
+                    val intent = Intent(context, DeviceControlActivity::class.java)
+                    val bundle = Bundle()
+                    bundle.putString("SERVICE_AE", device.applicationName)
+                    bundle.putString("MQTT_REQ_TOPIC", viewModel.mqttReqTopic)
+                    bundle.putString("MQTT_RESP_TOPIC", viewModel.mqttRespTopic)
+                    bundle.putInt("SERVICE_AE_POSITION", layoutPosition)
+                    intent.putExtras(bundle)
+                    controlActivityLauncher.launch(intent)
+                }
             }
         }
     }

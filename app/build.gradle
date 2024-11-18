@@ -4,7 +4,7 @@ apply plugin: 'kotlin-kapt'
 apply plugin: 'com.google.android.libraries.mapsplatform.secrets-gradle-plugin'
 
 android {
-    compileSdk 34
+    compileSdk 35
     defaultConfig {
         applicationId "kr.re.keti.mobiussampleapp_v25"
         minSdk 26

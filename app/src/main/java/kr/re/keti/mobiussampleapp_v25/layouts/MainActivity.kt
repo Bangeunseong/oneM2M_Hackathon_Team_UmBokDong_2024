@@ -23,9 +23,6 @@ import com.google.android.material.navigation.NavigationBarView
 import kr.re.keti.mobiussampleapp_v25.data.AE
 import kr.re.keti.mobiussampleapp_v25.data.ApplicationEntityObject
 import kr.re.keti.mobiussampleapp_v25.data.CSEBase
-import kr.re.keti.mobiussampleapp_v25.data.ContentSubscribeObject
-import kr.re.keti.mobiussampleapp_v25.utils.MqttClientRequest
-import kr.re.keti.mobiussampleapp_v25.utils.MqttClientRequestParser
 import kr.re.keti.mobiussampleapp_v25.utils.ParseElementXml
 import info.mqtt.android.service.MqttAndroidClient
 import kotlinx.coroutines.CoroutineScope
@@ -38,14 +35,6 @@ import kr.re.keti.mobiussampleapp_v25.R
 import kr.re.keti.mobiussampleapp_v25.database.RegisteredAE
 import kr.re.keti.mobiussampleapp_v25.databinding.ActivityMainBinding
 import kr.re.keti.mobiussampleapp_v25.database.RegisteredAEDatabase
-import org.eclipse.paho.client.mqttv3.IMqttActionListener
-import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken
-import org.eclipse.paho.client.mqttv3.IMqttToken
-import org.eclipse.paho.client.mqttv3.MqttCallback
-import org.eclipse.paho.client.mqttv3.MqttClient
-import org.eclipse.paho.client.mqttv3.MqttConnectOptions
-import org.eclipse.paho.client.mqttv3.MqttException
-import org.eclipse.paho.client.mqttv3.MqttMessage
 import timber.log.Timber
 import java.io.BufferedReader
 import java.io.DataOutputStream
@@ -65,13 +54,11 @@ class MainActivity : AppCompatActivity() {
     private val navController get() = _navController!!
     private var _appBarConfiguration: AppBarConfiguration? = null
     private val appBarConfiguration get() = _appBarConfiguration!!
-    private lateinit var db: RegisteredAEDatabase
 
     private var handler: Handler = Handler(Looper.myLooper()!!)
 
     private val MQTTPort = "1883"
     private var Mobius_Address = ""
-    private var presMqttClient: MqttAndroidClient? = null
 
     private val viewModel: MainViewModel by viewModels()
 
@@ -99,7 +86,7 @@ class MainActivity : AppCompatActivity() {
         _navHostFragment = supportFragmentManager.findFragmentById(R.id.fragmentContainerView) as NavHostFragment?
         _navController = navHostFragment.navController
         _appBarConfiguration = AppBarConfiguration(navController.graph)
-        db = RegisteredAEDatabase.getInstance(applicationContext)
+        viewModel.setDatabase(applicationContext)
 
         navController.addOnDestinationChangedListener(DestinationChangedListener())
         binding.menuBottomNavigation.setOnItemSelectedListener(ItemSelectionListener())
@@ -203,7 +190,7 @@ class MainActivity : AppCompatActivity() {
 
     /* Get Registered Device list from room database */
     private suspend fun setDeviceList() = coroutineScope {
-        val getList = async { db.registeredAEDAO().getAll() }
+        val getList = async { viewModel.database.registeredAEDAO().getAll() }
 
         withContext(Dispatchers.Main) {
             val deviceList = getList.await()
@@ -250,7 +237,7 @@ class MainActivity : AppCompatActivity() {
             Log.d(TAG,"RegisteredAE: ${registeredAE.isRegistered},${registeredAE.isTriggered},${registeredAE.isLedTurnedOn},${registeredAE.isLocked}")
             viewModel.getDeviceList().add(registeredAE)
             viewModel.addServiceAE(viewModel.getDeviceList().lastIndex)
-            db.registeredAEDAO().insert(registeredAE)
+            viewModel.database.registeredAEDAO().insert(registeredAE)
         }
     }
 

@@ -10,7 +10,9 @@ import info.mqtt.android.service.MqttAndroidClient
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kr.re.keti.mobiussampleapp_v25.App
 import kr.re.keti.mobiussampleapp_v25.data.ContentSubscribeObject
+import kr.re.keti.mobiussampleapp_v25.database.RegisteredAE
 import kr.re.keti.mobiussampleapp_v25.database.RegisteredAEDatabase
 import kr.re.keti.mobiussampleapp_v25.layouts.MainActivity.Companion.ae
 import kr.re.keti.mobiussampleapp_v25.layouts.MainActivity.Companion.csebase
@@ -34,124 +36,136 @@ import java.util.logging.Level
 import java.util.logging.Logger
 
 // TODO: Make things Work!!!
-class MqttWorker(context: Context, workerParams: WorkerParameters,
-                 mqttReqTopic: String, mqttRespTopic: String) : Worker(context, workerParams) {
-    private var mqttClient: MqttAndroidClient? = null
+class MqttWorker(
+    context: Context, workerParams: WorkerParameters, private val deviceAEName: String,
+    private val mqttReqTopic: String, private val mqttRespTopic: String
+) : Worker(context, workerParams) {
+    private var mqttClientList: MutableList<MqttAndroidClient>? = null
     private var handler = Handler(Looper.myLooper()!!)
-    private var isSuccessful = false
     private lateinit var db: RegisteredAEDatabase
 
     override fun doWork(): Result {
         db = RegisteredAEDatabase.getInstance(applicationContext)
-        CoroutineScope(Dispatchers.IO).launch {
-            val deviceList = db.registeredAEDAO().getAll()
-            for(device in deviceList){
-                createPresMQTT(true, device.applicationName)
-            }
-        }.invokeOnCompletion {
+        mqttClientList = App.mqttAndroidClient
+        return createSubscribeResource(deviceAEName+"_pres", mqttReqTopic = mqttReqTopic, mqttRespTopic = mqttRespTopic)
+    }
 
+    /* Create Subscription Resource and Connect to server by using MQTT Protocol */
+    private fun createSubscribeResource(deviceAEName: String, mqttReqTopic: String, mqttRespTopic: String): Result {
+        /* Subscription Resource Create */
+        val subscribeResource = CreateSubscribeResource(deviceAEName)
+        subscribeResource.setReceiver(object : IReceived {
+            override fun getResponseBody(msg: String) {
+                handler.post {
+                    Log.d(TAG, "**** Subscription Resource Create 요청 결과 ****\r\n\r\n$msg")
+                }
+            }
+        })
+        subscribeResource.start(); subscribeResource.join()
+
+        val mqttClient = MqttAndroidClient(
+            applicationContext,
+            "tcp://" + csebase.host + ":" + csebase.MQTTPort,
+            MqttClient.generateClientId()
+        )
+
+        try{
+            createMQTT(true, mqttClient, mqttReqTopic = mqttReqTopic, mqttRespTopic = mqttRespTopic)
+            mqttClientList!!.add(mqttClient)
+        } catch (e: MqttException){
+            Log.d(TAG, "Something is wrong!: ${e.cause}, ${e.message}")
+            return Result.failure()
         }
         return Result.success()
     }
 
-    // --- MQTT Service ---
     /* MQTT Subscription */
-    private fun createPresMQTT(mqttStart: Boolean, serviceAEName: String) {
-        if (mqttStart && mqttClient == null) {
-            /* Subscription Resource Create to Yellow Turtle */
-            val subcribeResource = CreateSubscribeResource(serviceAEName)
-            subcribeResource.setReceiver(object : IReceived {
-                override fun getResponseBody(msg: String) {
-                    handler.post {
-                        Log.d(TAG,"**** Subscription Resource Create 요청 결과 ****\r\n\r\n$msg")
+    private fun createMQTT(mqttStart: Boolean, mqttClient: MqttAndroidClient, mqttReqTopic: String, mqttRespTopic: String) {
+        if (mqttStart) {
+            /* MQTT Subscribe */
+            mqttClient.setCallback(object : MqttCallback{
+                override fun connectionLost(cause: Throwable?) {
+                    Log.d(TAG, "connectionLost")
+                    try{
+                        if(mqttStart) mqttClient.reconnect()
+                    } catch (e: MqttException){
+                        e.printStackTrace()
                     }
                 }
-            })
-            subcribeResource.start()
+                override fun messageArrived(topic: String?, message: MqttMessage?) {
+                    Log.d(TAG, "messageArrived")
 
-            /* MQTT Subscribe */
-            mqttClient = MqttAndroidClient(
-                this.applicationContext,
-                "tcp://" + csebase.host + ":" + csebase.MQTTPort,
-                MqttClient.generateClientId()
-            )
-            mqttClient!!.setCallback(presMqttCallback)
+                    /* Write Task to be done -> Update Presence data into room database */
+                    Log.d(TAG, "Message Content: $message")
+
+                    /* Json Type Response Parsing */
+                    val retrqi = MqttClientRequestParser.notificationJsonParse(message.toString())
+                    Log.d(TAG, "RQI[$retrqi]")
+                    val responseMessage = MqttClientRequest.notificationResponse(retrqi)
+                    Log.d(TAG, "Recv OK ResMessage [$responseMessage]")
+
+                    /* Make json for MQTT Response Message */
+                    val res_message = MqttMessage(responseMessage.toByteArray())
+
+                    try {
+                        mqttClient.publish(mqttRespTopic, res_message)
+                    } catch (e: MqttException) {
+                        e.printStackTrace()
+                    }
+                }
+                override fun deliveryComplete(token: IMqttDeliveryToken?) {
+                    Log.d(TAG, "deliveryComplete")
+                }
+            })
             try {
-                val token = mqttClient!!.connect(MqttConnectOptions())
-                token.actionCallback = presIMqttActionListener
+                val token = mqttClient.connect(MqttConnectOptions())
+                token.actionCallback = object : IMqttActionListener{
+                    override fun onSuccess(asyncActionToken: IMqttToken?) {
+                        Log.d(TAG, "onSuccess")
+                        val payload = ""
+                        val mqttQos = 1 /* 0: NO QoS, 1: No Check , 2: Each Check */
+
+                        val message = MqttMessage(payload.toByteArray())
+                        Log.d(TAG, "${message}")
+                        try {
+                            mqttClient.subscribe(mqttReqTopic, mqttQos)
+                        } catch (e: MqttException) {
+                            e.printStackTrace()
+                        }
+                    }
+                    override fun onFailure(asyncActionToken: IMqttToken?, exception: Throwable?) {
+                        Log.d(TAG, "onFailure")
+                    }
+                }
             } catch (e: MqttException) {
-                e.printStackTrace()
+                throw e
             }
         } else {
             /* MQTT unSubscribe or Client Close */
-            mqttClient?.close()
-            mqttClient = null
-        }
-    }
-    /* MQTT Listener */
-    private val presIMqttActionListener: IMqttActionListener = object : IMqttActionListener {
-        override fun onSuccess(asyncActionToken: IMqttToken) {
-            Log.d(TAG, "onSuccess")
-            val payload = ""
-            val mqttQos = 1 /* 0: NO QoS, 1: No Check , 2: Each Check */
-
-            val message = MqttMessage(payload.toByteArray())
-            Log.d(TAG, "${message}")
-            try {
-                mqttClient!!.subscribe(mqttReqTopic, mqttQos)
-            } catch (e: MqttException) {
-                e.printStackTrace()
+            if(mqttClient.isConnected){
+                try {
+                    val token = mqttClient.disconnect()
+                    token.actionCallback = object : IMqttActionListener{
+                        override fun onSuccess(asyncActionToken: IMqttToken?) {
+                            Log.d(TAG, "Successfully Disconnected!")
+                        }
+                        override fun onFailure(asyncActionToken: IMqttToken?, exception: Throwable?) {
+                            Log.d(TAG, "Failed to disconnect from server: ${exception?.cause}, ${exception?.message}")
+                        }
+                    }
+                } catch (e: MqttException){
+                    e.printStackTrace()
+                }
             }
         }
-
-        override fun onFailure(asyncActionToken: IMqttToken, exception: Throwable) {
-            mqttClient!!.reconnect()
-            Log.d(TAG, "onFailure")
-        }
     }
-    /* MQTT Broker Message Received */
-    private val presMqttCallback: MqttCallback = object : MqttCallback {
-        override fun connectionLost(cause: Throwable) {
-            Log.d(TAG, "connectionLost")
-        }
 
-        //@Throws(Exception::class)
-        override fun messageArrived(topic: String, message: MqttMessage) {
-            Log.d(TAG, "messageArrived")
-
-            /* Write Task to be done */
-            // ->
-
-            /* Json Type Response Parsing */
-            val retrqi = MqttClientRequestParser.notificationJsonParse(message.toString())
-            Log.d(TAG, "RQI[$retrqi]")
-
-            val responseMessage = MqttClientRequest.notificationResponse(retrqi)
-            Log.d(TAG, "Recv OK ResMessage [$responseMessage]")
-
-            /* Make json for MQTT Response Message */
-            val res_message = MqttMessage(responseMessage.toByteArray())
-
-            try {
-                mqttClient!!.publish(mqttRespTopic, res_message)
-            } catch (e: MqttException) {
-                Log.d(TAG, "${e.message}")
-            }
-        }
-
-        override fun deliveryComplete(token: IMqttDeliveryToken) {
-            Log.d(TAG, "deliveryComplete")
-        }
-    }
-    // ------------------------
-
-    // --- Subscription Actions ---
     /* Subscribe Co2 Content Resource */
     internal inner class CreateSubscribeResource(private val serviceAEName: String) : Thread() {
         private val LOG: Logger = Logger.getLogger(
             CreateSubscribeResource::class.java.name
         )
-        private var receiver: kr.re.keti.mobiussampleapp_v25.layouts.MainActivity.IReceived? = null
+        private var receiver: IReceived? = null
         private val container_name = "DATA" //change to control container name
 
         var subscribeInstance: ContentSubscribeObject = ContentSubscribeObject()
@@ -163,7 +177,7 @@ class MqttWorker(context: Context, workerParams: WorkerParameters,
             subscribeInstance.setOrigin_id(ae.aEid)
         }
 
-        fun setReceiver(hanlder: kr.re.keti.mobiussampleapp_v25.layouts.MainActivity.IReceived?) {
+        fun setReceiver(hanlder: IReceived?) {
             this.receiver = hanlder
         }
 
