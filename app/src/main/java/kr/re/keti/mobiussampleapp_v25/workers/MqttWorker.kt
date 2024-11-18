@@ -30,7 +30,7 @@ import java.net.URL
 import java.util.logging.Level
 import java.util.logging.Logger
 
-// TODO: Make things Work!!! -> Client should be single object not the list(Change it!)
+// TODO: Make things Work!!! -> Client should be single object not the list(Change it!) -> Foreground service is mandatory
 class MqttWorker(
     context: Context, workerParams: WorkerParameters, private val deviceAEName: String,
     private val mqttReqTopic: String, private val mqttRespTopic: String

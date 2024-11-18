@@ -5,7 +5,11 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.util.Log
 import androidx.lifecycle.MutableLiveData
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkRequest
+import androidx.work.WorkerParameters
 import info.mqtt.android.service.MqttAndroidClient
+import kr.re.keti.mobiussampleapp_v25.workers.MqttWorker
 
 class App: Application() {
     override fun onCreate() {
@@ -21,7 +25,7 @@ class App: Application() {
     }
 
     companion object {
-        val isConnected = false
+        var isConnected = false
         const val CHANNEL_ID = "ANOMALY_DETECTION_SERVICE_CHANNEL"
     }
 }
