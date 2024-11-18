@@ -9,7 +9,7 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import kr.re.keti.mobiussampleapp_v25.data.AE
+import kr.re.keti.mobiussampleapp_v25.database.RegisteredAE
 import kr.re.keti.mobiussampleapp_v25.databinding.FragmentDeviceListBinding
 import kr.re.keti.mobiussampleapp_v25.databinding.ItemRecyclerDeviceBinding
 
@@ -33,7 +33,7 @@ class DeviceListFragment : Fragment() {
     }
 
     // Inner Class For Setting Adapter in Device Recycler View
-    inner class DeviceAdapter(private val deviceList: MutableList<String>) : RecyclerView.Adapter<DeviceAdapter.ViewHolder>() {
+    inner class DeviceAdapter(private val deviceList: MutableList<RegisteredAE>) : RecyclerView.Adapter<DeviceAdapter.ViewHolder>() {
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
             return ViewHolder(ItemRecyclerDeviceBinding.inflate(LayoutInflater.from(parent.context), parent, false))
         }
@@ -46,14 +46,10 @@ class DeviceListFragment : Fragment() {
             return deviceList.size
         }
 
-        fun addData(){
-            notifyItemInserted(viewModel.getDeviceList().lastIndex)
-        }
-
-        inner class ViewHolder(val binding: ItemRecyclerDeviceBinding): RecyclerView.ViewHolder(binding.root) {
-            fun bind(device: String){
-                binding.deviceName.text = device
-                binding.deviceStatus.text = "Registered"
+        inner class ViewHolder(private val binding: ItemRecyclerDeviceBinding): RecyclerView.ViewHolder(binding.root) {
+            fun bind(device: RegisteredAE){
+                binding.deviceName.text = device.applicationName
+                binding.deviceStatus.text = if(device.isRegistered) "Registered" else "Unregistered"
             }
         }
     }
@@ -69,8 +65,15 @@ class DeviceListFragment : Fragment() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         _adapter = DeviceAdapter(viewModel.getDeviceList())
-        viewModel.addedServiceAEName.observe(this) {
-            adapter.addData()
+        viewModel.serviceAEAdd.observe(this) {
+            if (it != null) {
+                adapter.notifyItemInserted(it)
+            }
+        }
+        viewModel.serviceAEUpdate.observe(this) {
+            if (it != null) {
+                adapter.notifyItemChanged(it)
+            }
         }
     }
 

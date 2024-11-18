@@ -9,7 +9,7 @@ import androidx.room.Update
 
 @Dao
 interface RegisteredAE_DAO {
-    @Insert(onConflict = OnConflictStrategy.ABORT)
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(registeredAE: RegisteredAE)
 
     @Update
@@ -17,6 +17,9 @@ interface RegisteredAE_DAO {
 
     @Delete
     suspend fun delete(registeredAE: RegisteredAE)
+
+    @Query("SELECT * FROM RegisteredAE WHERE applicationName = :applicationName")
+    suspend fun get(applicationName: String) : RegisteredAE
 
     @Query("SELECT * FROM RegisteredAE")
     suspend fun getAll() : List<RegisteredAE>

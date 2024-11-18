@@ -8,18 +8,18 @@ import android.view.MenuItem
 import androidx.appcompat.app.AppCompatActivity
 import kr.re.keti.mobiussampleapp_v25.R
 import kr.re.keti.mobiussampleapp_v25.databinding.ActivityAddDeviceBinding
-import kr.re.keti.mobiussampleapp_v25.utils.AddListener
+import kr.re.keti.mobiussampleapp_v25.utils.DeviceAddListener
 
-class DeviceAddActivity: AppCompatActivity(), AddListener {
+class DeviceAddActivity: AppCompatActivity(), DeviceAddListener {
     private var _binding: ActivityAddDeviceBinding? = null
     private val binding get() = _binding!!
-    private var _setServiceAEDialog: SetServiceAEDialog? = null
-    private val setServiceAEDialog get() = _setServiceAEDialog!!
+    private var _deviceRegisterDialog: DeviceRegisterDialog? = null
+    private val deviceRegisterDialog get() = _deviceRegisterDialog!!
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         _binding = ActivityAddDeviceBinding.inflate(layoutInflater)
-        _setServiceAEDialog = SetServiceAEDialog(this)
+        _deviceRegisterDialog = DeviceRegisterDialog(this)
         setContentView(binding.root)
 
         binding.toolbar.setTitle("Add Device")
@@ -31,7 +31,7 @@ class DeviceAddActivity: AppCompatActivity(), AddListener {
         }
 
         binding.addDevice.setOnClickListener {
-            setServiceAEDialog.show(supportFragmentManager, "DeviceAddActivity")
+            deviceRegisterDialog.show(supportFragmentManager, "DeviceAddActivity")
         }
     }
 
@@ -39,7 +39,7 @@ class DeviceAddActivity: AppCompatActivity(), AddListener {
         super.onDestroy()
 
         _binding = null
-        _setServiceAEDialog = null
+        _deviceRegisterDialog = null
     }
 
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
@@ -61,8 +61,8 @@ class DeviceAddActivity: AppCompatActivity(), AddListener {
         }
     }
 
-    override fun setServiceAEName(serviceAE: String?) {
-        Log.d("DeviceAddActivity", "Data: ${serviceAE}")
+    override fun setDeviceName(serviceAE: String?) {
+        Log.d("DeviceAddActivity", "Data: $serviceAE")
         intent.putExtra("SERVICE_AE", serviceAE)
         setResult(RESULT_OK, intent)
         finish()

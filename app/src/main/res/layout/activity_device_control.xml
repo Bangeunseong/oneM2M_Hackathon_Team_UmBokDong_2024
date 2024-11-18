@@ -11,22 +11,25 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:contentDescription="Device Location"
+        map:mapId="DeviceLocation"
         map:uiZoomControls="true"
         map:uiRotateGestures="true"
         map:cameraTilt="30"/>
 
     <LinearLayout
+        android:id="@+id/device_control_layout"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:layout_gravity="bottom"
-        android:gravity="center_horizontal">
+        android:gravity="center_horizontal"
+        android:translationY="298dp">
 
         <ImageButton
             android:id="@+id/imageButton"
             android:layout_width="300sp"
             android:layout_height="20sp"
-            android:src="@drawable/ic_arrow_down"
+            android:src="@drawable/ic_arrow_up"
             android:contentDescription="Show Popup Dialog"
             android:background="@drawable/bg_device_control_menu"/>
 
@@ -37,7 +40,7 @@
             android:paddingVertical="25dp">
 
             <androidx.appcompat.widget.SwitchCompat
-                android:id="@+id/switch1"
+                android:id="@+id/led_switch"
                 android:layout_width="match_parent"
                 android:layout_height="50dp"
                 android:paddingHorizontal="10dp"
@@ -46,13 +49,13 @@
                 app:layout_constraintTop_toBottomOf="@id/textView2" />
 
             <androidx.appcompat.widget.SwitchCompat
-                android:id="@+id/switch2"
+                android:id="@+id/lock_switch"
                 android:layout_width="match_parent"
                 android:layout_height="50dp"
                 android:paddingHorizontal="10dp"
                 android:text="Unlocked"
                 android:textSize="16sp"
-                app:layout_constraintTop_toBottomOf="@id/switch1" />
+                app:layout_constraintTop_toBottomOf="@id/led_switch" />
 
             <TextView
                 android:id="@+id/textView2"
@@ -70,6 +73,7 @@
                 android:id="@+id/imageView3"
                 android:layout_width="100dp"
                 android:layout_height="100dp"
+                android:contentDescription="Device Status Image"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent"

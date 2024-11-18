@@ -13,17 +13,12 @@ abstract class RegisteredAEDatabase: RoomDatabase() {
         private var instance : RegisteredAEDatabase? = null
 
         @Synchronized
-        fun getInstance(context : Context) : RegisteredAEDatabase? {
-            if(instance == null){
-                synchronized(RegisteredAEDatabase::class){
-                    instance = Room.databaseBuilder(
-                        context.applicationContext,
-                        RegisteredAEDatabase::class.java,
-                        "registered_ae.db"
-                    ).build()
-                }
+        fun getInstance(context : Context) : RegisteredAEDatabase {
+            return instance ?: synchronized(this) {
+                Room.databaseBuilder(context, RegisteredAEDatabase::class.java, "item_database")
+                    .build()
+                    .also { instance = it }
             }
-            return instance
         }
     }
 }
