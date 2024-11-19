@@ -4,6 +4,7 @@ import android.Manifest
 import android.Manifest.permission.ACCESS_FINE_LOCATION
 import android.Manifest.permission.FOREGROUND_SERVICE
 import android.Manifest.permission.FOREGROUND_SERVICE_DATA_SYNC
+import android.Manifest.permission.INTERNET
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
@@ -105,13 +106,8 @@ class MainActivity : AppCompatActivity() {
         CoroutineScope(Dispatchers.Default).launch {
             setDeviceList()
         }
-
         if(App.serviceIntent == null){
             App.serviceIntent = Intent(applicationContext, MqttConnectionService::class.java)
-            val bundle = Bundle()
-            bundle.putString("MQTT_REQ_TOPIC", viewModel.mqttReqTopic)
-            bundle.putString("MQTT_RESP_TOPIC", viewModel.mqttRespTopic)
-            App.serviceIntent?.putExtras(bundle)
         }
     }
 
@@ -122,9 +118,11 @@ class MainActivity : AppCompatActivity() {
         if(checkSelfPermission(FILE_INTEGRITY_SERVICE) == PackageManager.PERMISSION_DENIED ||
             checkSelfPermission(NOTIFICATION_SERVICE) == PackageManager.PERMISSION_DENIED ||
             checkSelfPermission(FOREGROUND_SERVICE) == PackageManager.PERMISSION_DENIED ||
-            checkSelfPermission(ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_DENIED){
+            checkSelfPermission(ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_DENIED ||
+            checkSelfPermission(INTERNET) == PackageManager.PERMISSION_DENIED){
             if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU){
                 requestPermissions(arrayOf(
+                    Manifest.permission.INTERNET,
                     Manifest.permission.FOREGROUND_SERVICE,
                     Manifest.permission.ACCESS_FINE_LOCATION,
                     Manifest.permission.ACCESS_COARSE_LOCATION,
@@ -178,6 +176,10 @@ class MainActivity : AppCompatActivity() {
                     Log.d(TAG,"** AE Create ResponseCode[$msg]")
                     if (msg.toInt() == 201) {
                         viewModel.setMQTTTopic("/oneM2M/req/Mobius2/" + ae.aEid + "_sub" + "/#", "/oneM2M/resp/Mobius2/" + ae.aEid + "_sub" + "/json")
+                        val bundle = Bundle()
+                        bundle.putString("MQTT_REQ_TOPIC", viewModel.mqttReqTopic)
+                        bundle.putString("MQTT_RESP_TOPIC", viewModel.mqttRespTopic)
+                        App.serviceIntent?.putExtras(bundle)
                         Log.d(TAG,"ReqTopic[${viewModel.mqttReqTopic}]")
                         Log.d(TAG,"ResTopic[${viewModel.mqttRespTopic}]")
                     } else { // If AE is Exist , GET AEID
@@ -188,17 +190,21 @@ class MainActivity : AppCompatActivity() {
                                     Log.d(TAG,"** AE Retrive ResponseCode[$msg] **")
 
                                     viewModel.setMQTTTopic("/oneM2M/req/Mobius2/" + ae.aEid + "_sub" + "/#", "/oneM2M/resp/Mobius2/" + ae.aEid + "_sub" + "/json")
+                                    val bundle = Bundle()
+                                    bundle.putString("MQTT_REQ_TOPIC", viewModel.mqttReqTopic)
+                                    bundle.putString("MQTT_RESP_TOPIC", viewModel.mqttRespTopic)
+                                    App.serviceIntent?.putExtras(bundle)
                                     Log.d(TAG,"ReqTopic[${viewModel.mqttReqTopic}]")
                                     Log.d(TAG,"ResTopic[${viewModel.mqttRespTopic}]")
                                 }
                             }
                         })
-                        aeRetrive.start(); aeRetrive.join()
+                        aeRetrive.start();
                     }
                 }
             }
         })
-        aeCreate.start(); aeCreate.join()
+        aeCreate.start();
     }
 
     /* Get Registered Device list from room database */
