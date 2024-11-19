@@ -5,7 +5,6 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Intent
 import android.util.Log
-import kr.re.keti.mobiussampleapp_v25.services.MqttConnectionService
 
 
 class App: Application() {
