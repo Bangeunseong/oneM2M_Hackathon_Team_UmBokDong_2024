@@ -2,6 +2,8 @@ package kr.re.keti.mobiussampleapp_v25.layouts
 
 import android.Manifest
 import android.Manifest.permission.ACCESS_FINE_LOCATION
+import android.Manifest.permission.FOREGROUND_SERVICE
+import android.Manifest.permission.FOREGROUND_SERVICE_DATA_SYNC
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
@@ -24,18 +26,18 @@ import kr.re.keti.mobiussampleapp_v25.data.AE
 import kr.re.keti.mobiussampleapp_v25.data.ApplicationEntityObject
 import kr.re.keti.mobiussampleapp_v25.data.CSEBase
 import kr.re.keti.mobiussampleapp_v25.utils.ParseElementXml
-import info.mqtt.android.service.MqttAndroidClient
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kr.re.keti.mobiussampleapp_v25.App
 import kr.re.keti.mobiussampleapp_v25.R
 import kr.re.keti.mobiussampleapp_v25.data.ContentSubscribeObject
 import kr.re.keti.mobiussampleapp_v25.database.RegisteredAE
 import kr.re.keti.mobiussampleapp_v25.databinding.ActivityMainBinding
-import kr.re.keti.mobiussampleapp_v25.database.RegisteredAEDatabase
+import kr.re.keti.mobiussampleapp_v25.services.MqttConnectionService
 import timber.log.Timber
 import java.io.BufferedReader
 import java.io.DataOutputStream
@@ -59,7 +61,7 @@ class MainActivity : AppCompatActivity() {
     private var handler: Handler = Handler(Looper.myLooper()!!)
 
     private val MQTTPort = "1883"
-    private var Mobius_Address = ""
+    private val Mobius_Address = "192.168.55.35"
 
     private val viewModel: MainViewModel by viewModels()
 
@@ -103,6 +105,14 @@ class MainActivity : AppCompatActivity() {
         CoroutineScope(Dispatchers.Default).launch {
             setDeviceList()
         }
+
+        if(App.serviceIntent == null){
+            App.serviceIntent = Intent(applicationContext, MqttConnectionService::class.java)
+            val bundle = Bundle()
+            bundle.putString("MQTT_REQ_TOPIC", viewModel.mqttReqTopic)
+            bundle.putString("MQTT_RESP_TOPIC", viewModel.mqttRespTopic)
+            App.serviceIntent?.putExtras(bundle)
+        }
     }
 
     // onStart -> Check Permission
@@ -111,9 +121,11 @@ class MainActivity : AppCompatActivity() {
 
         if(checkSelfPermission(FILE_INTEGRITY_SERVICE) == PackageManager.PERMISSION_DENIED ||
             checkSelfPermission(NOTIFICATION_SERVICE) == PackageManager.PERMISSION_DENIED ||
+            checkSelfPermission(FOREGROUND_SERVICE) == PackageManager.PERMISSION_DENIED ||
             checkSelfPermission(ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_DENIED){
             if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU){
                 requestPermissions(arrayOf(
+                    Manifest.permission.FOREGROUND_SERVICE,
                     Manifest.permission.ACCESS_FINE_LOCATION,
                     Manifest.permission.ACCESS_COARSE_LOCATION,
                     Manifest.permission.SCHEDULE_EXACT_ALARM,
@@ -155,8 +167,6 @@ class MainActivity : AppCompatActivity() {
     // --- Custom Methods ---
     /* AE Create for Android AE */
     private fun getAEInfo() {
-        Mobius_Address = "192.168.55.35"
-
         csebase.setInfo(Mobius_Address, "7579", "Mobius", MQTTPort)
 
         // AE Create for Android AE
@@ -165,28 +175,30 @@ class MainActivity : AppCompatActivity() {
         aeCreate.setReceiver(object : IReceived {
             override fun getResponseBody(msg: String) {
                 handler.post {
-                    Timber.tag(TAG).d("** AE Create ResponseCode[%s]", msg)
+                    Log.d(TAG,"** AE Create ResponseCode[$msg]")
                     if (msg.toInt() == 201) {
                         viewModel.setMQTTTopic("/oneM2M/req/Mobius2/" + ae.aEid + "_sub" + "/#", "/oneM2M/resp/Mobius2/" + ae.aEid + "_sub" + "/json")
-                        Timber.tag(TAG).d("ReqTopic[%s]", viewModel.mqttReqTopic)
-                        Timber.tag(TAG).d("ResTopic[%s]", viewModel.mqttRespTopic)
+                        Log.d(TAG,"ReqTopic[${viewModel.mqttReqTopic}]")
+                        Log.d(TAG,"ResTopic[${viewModel.mqttRespTopic}]")
                     } else { // If AE is Exist , GET AEID
                         val aeRetrive = aeRetrieveRequest()
                         aeRetrive.setReceiver(object : IReceived {
-                            override fun getResponseBody(resmsg: String) {
+                            override fun getResponseBody(msg: String) {
                                 handler.post {
-                                    Timber.tag(TAG).d("** AE Retrive ResponseCode[%s] **", resmsg)
-                                    Timber.tag(TAG).d("ReqTopic[%s]", viewModel.mqttReqTopic)
-                                    Timber.tag(TAG).d( "ResTopic[%s]", viewModel.mqttRespTopic)
+                                    Log.d(TAG,"** AE Retrive ResponseCode[$msg] **")
+
+                                    viewModel.setMQTTTopic("/oneM2M/req/Mobius2/" + ae.aEid + "_sub" + "/#", "/oneM2M/resp/Mobius2/" + ae.aEid + "_sub" + "/json")
+                                    Log.d(TAG,"ReqTopic[${viewModel.mqttReqTopic}]")
+                                    Log.d(TAG,"ResTopic[${viewModel.mqttRespTopic}]")
                                 }
                             }
                         })
-                        aeRetrive.start()
+                        aeRetrive.start(); aeRetrive.join()
                     }
                 }
             }
         })
-        aeCreate.start()
+        aeCreate.start(); aeCreate.join()
     }
 
     /* Get Registered Device list from room database */
@@ -206,6 +218,7 @@ class MainActivity : AppCompatActivity() {
         val reqLed = RetrieveRequest("DATA", serviceAE+"_led")
         val reqPres = RetrieveRequest("DATA", serviceAE+"_pres")
         val reqLock = RetrieveRequest("DATA", serviceAE+"_lock")
+        val reqSub = CreateSubscribeResource("DATA", serviceAE+"_pres")
         val registeredAE = RegisteredAE(serviceAE,false,false,false,true)
         reqLed.setReceiver(object : IReceived {
             override fun getResponseBody(msg: String) {
@@ -225,20 +238,33 @@ class MainActivity : AppCompatActivity() {
                 registeredAE.isLocked = pxml.GetElementXml(msg, "con") != "0"
             }
         })
+        reqSub.setReceiver(object : IReceived{
+            override fun getResponseBody(msg: String) {
+                Log.d(TAG, "Subscription Resource Created!")
+
+                Log.d(TAG, "Subscription Response: $msg")
+            }
+        })
 
         val ledData = async { reqLed.start(); reqLed.join() }
         val presData = async { reqPres.start(); reqPres.join() }
         val lockData = async { reqLock.start(); reqLock.join() }
+        val subData = async { reqSub.start(); reqSub.join() }
 
         withContext(Dispatchers.Main) {
             ledData.await()
             presData.await()
             lockData.await()
+            subData.await()
 
             Log.d(TAG,"RegisteredAE: ${registeredAE.isRegistered},${registeredAE.isTriggered},${registeredAE.isLedTurnedOn},${registeredAE.isLocked}")
             viewModel.getDeviceList().add(registeredAE)
             viewModel.addServiceAE(viewModel.getDeviceList().lastIndex)
             viewModel.database.registeredAEDAO().insert(registeredAE)
+            if(!App.isConnected){
+                App.isConnected = true
+                startForegroundService(App.serviceIntent)
+            }
         }
     }
 
@@ -419,7 +445,7 @@ class MainActivity : AppCompatActivity() {
             RetrieveRequest::class.java.name
         )
         private var receiver: IReceived? = null
-        private var ContainerName = "cnt-co2"
+        private var ContainerName = ""
         private var serviceAEName = ""
 
         constructor(containerName: String, serviceAEName: String) {
@@ -470,12 +496,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     /* Subscribe Presence Content Resource */
-    internal inner class CreateSubscribeResource(private val serviceAEName: String) : Thread() {
+    internal inner class CreateSubscribeResource(private val containerName: String, private val serviceAEName: String) : Thread() {
         private val LOG: Logger = Logger.getLogger(
             CreateSubscribeResource::class.java.name
         )
         private var receiver: IReceived? = null
-        private val container_name = "DATA" //change to control container name
 
         var subscribeInstance: ContentSubscribeObject = ContentSubscribeObject()
 
@@ -492,7 +517,7 @@ class MainActivity : AppCompatActivity() {
 
         override fun run() {
             try {
-                val sb = csebase.serviceUrl + "/" + serviceAEName + "/" + container_name
+                val sb = csebase.serviceUrl + "/" + serviceAEName + "/" + containerName
 
                 val mUrl = URL(sb)
 

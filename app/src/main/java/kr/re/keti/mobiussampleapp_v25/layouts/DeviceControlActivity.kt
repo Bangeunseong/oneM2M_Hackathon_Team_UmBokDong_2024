@@ -208,11 +208,6 @@ class DeviceControlActivity: AppCompatActivity(), OnMapReadyCallback {
         if(!job.isCompleted) job.cancel()
     }
 
-    override fun onLowMemory() {
-        super.onLowMemory()
-        binding.mapView.onLowMemory()
-    }
-
     override fun onMapReady(googleMap: GoogleMap) {
         googleMap.mapType = GoogleMap.MAP_TYPE_NORMAL
         googleMap.addMarker(MarkerOptions().position(LatLng(37.654601, 127.060530)).title("Current Location"))

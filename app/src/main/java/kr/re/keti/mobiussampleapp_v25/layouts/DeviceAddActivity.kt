@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import kr.re.keti.mobiussampleapp_v25.R
 import kr.re.keti.mobiussampleapp_v25.databinding.ActivityAddDeviceBinding
@@ -63,8 +64,18 @@ class DeviceAddActivity: AppCompatActivity(), DeviceAddListener {
 
     override fun setDeviceName(serviceAE: String?) {
         Log.d("DeviceAddActivity", "Data: $serviceAE")
-        intent.putExtra("SERVICE_AE", serviceAE)
-        setResult(RESULT_OK, intent)
-        finish()
+        if(serviceAE != null){
+            intent.putExtra("SERVICE_AE", serviceAE)
+            setResult(RESULT_OK, intent)
+            finish()
+        } else{
+            Toast.makeText(
+                this,
+                "The device is currently not registered in our server.\n " +
+                        "Please register the device first.\n " +
+                        "Or contact the administrator.",
+                Toast.LENGTH_LONG)
+                .show()
+        }
     }
 }

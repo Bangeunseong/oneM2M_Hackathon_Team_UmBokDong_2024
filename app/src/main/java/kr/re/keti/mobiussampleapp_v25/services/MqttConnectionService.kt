@@ -4,7 +4,10 @@ import android.app.Service
 import android.content.Intent
 import android.os.IBinder
 import android.util.Log
+import androidx.core.app.NotificationCompat
 import info.mqtt.android.service.MqttAndroidClient
+import kr.re.keti.mobiussampleapp_v25.App
+import kr.re.keti.mobiussampleapp_v25.R
 import kr.re.keti.mobiussampleapp_v25.layouts.MainActivity.Companion.csebase
 import kr.re.keti.mobiussampleapp_v25.utils.MqttClientRequest
 import kr.re.keti.mobiussampleapp_v25.utils.MqttClientRequestParser
@@ -17,21 +20,32 @@ import org.eclipse.paho.client.mqttv3.MqttConnectOptions
 import org.eclipse.paho.client.mqttv3.MqttException
 import org.eclipse.paho.client.mqttv3.MqttMessage
 
-class MqttService(private val mqttReqTopic: String, private val mqttRespTopic: String): Service() {
+class MqttConnectionService: Service() {
     private var mqttClient: MqttAndroidClient? = null
-
-    override fun onCreate() {
-        super.onCreate()
-        createMQTT(true, mqttReqTopic, mqttRespTopic)
-    }
+    private var mqttReqTopic: String? = null
+    private var mqttRespTopic: String? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        val bundle = intent?.extras
+        mqttReqTopic = bundle?.getString("MQTT_REQ_TOPIC")
+        mqttRespTopic = bundle?.getString("MQTT_RESP_TOPIC")
+
+        createMQTT(true, mqttReqTopic!!, mqttRespTopic!!)
+        val notification = NotificationCompat.Builder(this, App.CHANNEL_ID)
+            .setContentTitle("MQTT Service")
+            .setContentText("MQTT is running in the background")
+            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .build()
+
+        startForeground(1, notification)
+        Log.d(TAG, "MQTT Connection Created")
         return START_STICKY
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        createMQTT(false, mqttReqTopic, mqttRespTopic)
+        Log.d(TAG, "MQTT Connection Destroyed")
+        createMQTT(false, mqttReqTopic!!, mqttRespTopic!!)
     }
 
     override fun onBind(p0: Intent?): IBinder? {
@@ -49,7 +63,10 @@ class MqttService(private val mqttReqTopic: String, private val mqttRespTopic: S
 
             /* MQTT Subscribe */
             mqttClient!!.setCallback(object : MqttCallback {
-                override fun connectionLost(cause: Throwable?) { Log.d(TAG, "connectionLost") }
+                override fun connectionLost(cause: Throwable?) {
+                    Log.d(TAG, "connectionLost")
+                    if(App.isConnected) mqttClient!!.reconnect()
+                }
                 override fun messageArrived(topic: String?, message: MqttMessage?) {
                     Log.d(TAG, "messageArrived")
 
@@ -75,7 +92,10 @@ class MqttService(private val mqttReqTopic: String, private val mqttRespTopic: S
             })
 
             try {
-                val token = mqttClient!!.connect(MqttConnectOptions())
+                val mqttConnectOptions = MqttConnectOptions()
+                mqttConnectOptions.isCleanSession = true
+                mqttConnectOptions.isAutomaticReconnect = true
+                val token = mqttClient!!.connect(mqttConnectOptions)
                 token.actionCallback = object : IMqttActionListener {
                     override fun onSuccess(asyncActionToken: IMqttToken?) {
                         Log.d(TAG, "onSuccess")
@@ -83,7 +103,6 @@ class MqttService(private val mqttReqTopic: String, private val mqttRespTopic: S
                         val mqttQos = 1 /* 0: NO QoS, 1: No Check , 2: Each Check */
 
                         val message = MqttMessage(payload.toByteArray())
-                        Log.d(TAG, "${message}")
                         try {
                             mqttClient!!.subscribe(mqttReqTopic, mqttQos)
                         } catch (e: MqttException) {
@@ -95,34 +114,8 @@ class MqttService(private val mqttReqTopic: String, private val mqttRespTopic: S
                     }
                 }
             } catch (e: MqttException) {
-                throw e
+                e.printStackTrace()
             }
-        } else {
-            /* MQTT unSubscribe or Client Close */
-            if(mqttClient!!.isConnected){
-                try {
-                    val token = mqttClient!!.disconnect()
-                    token.actionCallback = object : IMqttActionListener {
-                        override fun onSuccess(asyncActionToken: IMqttToken?) {
-                            Log.d(TAG, "Successfully Disconnected!")
-                        }
-                        override fun onFailure(asyncActionToken: IMqttToken?, exception: Throwable?) {
-                            Log.d(TAG, "Failed to disconnect from server: ${exception?.cause}, ${exception?.message}")
-                        }
-                    }
-                } catch (e: MqttException){
-                    e.printStackTrace()
-                }
-            }
-        }
-    }
-    /* MQTT Reconnection */
-    fun reConnectMQTT() {
-        if(mqttClient!!.isConnected) return
-        try{
-            mqttClient!!.reconnect()
-        } catch (e: MqttException){
-            e.printStackTrace()
         }
     }
 
