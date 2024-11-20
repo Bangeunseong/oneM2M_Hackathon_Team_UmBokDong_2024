@@ -5,6 +5,7 @@ import android.Manifest.permission.ACCESS_FINE_LOCATION
 import android.Manifest.permission.FOREGROUND_SERVICE
 import android.Manifest.permission.FOREGROUND_SERVICE_DATA_SYNC
 import android.Manifest.permission.INTERNET
+import android.Manifest.permission.POST_NOTIFICATIONS
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
@@ -119,9 +120,11 @@ class MainActivity : AppCompatActivity() {
             checkSelfPermission(NOTIFICATION_SERVICE) == PackageManager.PERMISSION_DENIED ||
             checkSelfPermission(FOREGROUND_SERVICE) == PackageManager.PERMISSION_DENIED ||
             checkSelfPermission(ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_DENIED ||
-            checkSelfPermission(INTERNET) == PackageManager.PERMISSION_DENIED){
+            checkSelfPermission(INTERNET) == PackageManager.PERMISSION_DENIED ||
+            checkSelfPermission(POST_NOTIFICATIONS) == PackageManager.PERMISSION_DENIED){
             if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU){
                 requestPermissions(arrayOf(
+                    Manifest.permission.POST_NOTIFICATIONS,
                     Manifest.permission.INTERNET,
                     Manifest.permission.FOREGROUND_SERVICE,
                     Manifest.permission.ACCESS_FINE_LOCATION,
