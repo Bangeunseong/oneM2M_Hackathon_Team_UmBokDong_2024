@@ -10,6 +10,8 @@
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
         android:name=".App"
@@ -24,6 +26,9 @@
 
         <uses-library android:name="com.google.android.maps" />
 
+        <service android:name=".services.MqttConnectionService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
         <activity
             android:name=".layouts.DeviceControlActivity"
             android:exported="false"
@@ -46,7 +51,6 @@
         <meta-data
             android:name="com.google.android.geo.API_KEY"
             android:value="${MAPS_API_KEY}" />
-
     </application>
 
 </manifest>

@@ -3,11 +3,12 @@ package kr.re.keti.mobiussampleapp_v25
 import android.app.Application
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.content.Intent
 import android.util.Log
-import androidx.lifecycle.MutableLiveData
-import info.mqtt.android.service.MqttAndroidClient
+
 
 class App: Application() {
+
     override fun onCreate() {
         super.onCreate()
         createNotificationChannelAlarm()
@@ -21,8 +22,8 @@ class App: Application() {
     }
 
     companion object {
-        val mqttAndroidClient = mutableListOf<MqttAndroidClient>()
-        val isConnected = false
+        var serviceIntent: Intent? = null
+        var isConnected = false
         const val CHANNEL_ID = "ANOMALY_DETECTION_SERVICE_CHANNEL"
     }
 }
