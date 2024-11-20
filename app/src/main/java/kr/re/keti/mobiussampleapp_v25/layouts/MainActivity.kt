@@ -168,8 +168,6 @@ class MainActivity : AppCompatActivity() {
     // --- Custom Methods ---
     /* AE Create for Android AE */
     private fun getAEInfo() {
-        Mobius_Address = "192.168.55.35"
-
         csebase.setInfo(Mobius_Address, "7579", "Mobius", MQTTPort)
 
         // AE Create for Android AE
