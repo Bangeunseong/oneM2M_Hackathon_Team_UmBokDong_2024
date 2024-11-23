@@ -40,9 +40,9 @@ import java.util.logging.Logger
 class DeviceManageFragment: Fragment() {
     private var _binding: FragmentDeviceManageBinding? = null
     private val binding get() = _binding!!
-
     private var _adapter: DeviceAdapter? = null
     private val adapter get() = _adapter!!
+
     private val viewModel: MainViewModel by activityViewModels()
     private val controlActivityLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
         if(it.resultCode == RESULT_OK){
