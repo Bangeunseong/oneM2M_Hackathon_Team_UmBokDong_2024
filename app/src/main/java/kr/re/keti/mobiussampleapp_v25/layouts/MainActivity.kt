@@ -3,7 +3,6 @@ package kr.re.keti.mobiussampleapp_v25.layouts
 import android.Manifest
 import android.Manifest.permission.ACCESS_FINE_LOCATION
 import android.Manifest.permission.FOREGROUND_SERVICE
-import android.Manifest.permission.FOREGROUND_SERVICE_DATA_SYNC
 import android.Manifest.permission.INTERNET
 import android.Manifest.permission.POST_NOTIFICATIONS
 import android.content.Intent
@@ -146,7 +145,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
-        menuInflater.inflate(R.menu.menu_device, menu)
+        menuInflater.inflate(R.menu.menu_main, menu)
         return super.onCreateOptionsMenu(menu)
     }
 
@@ -159,6 +158,28 @@ class MainActivity : AppCompatActivity() {
             R.id.menu_add -> {
                 val intent = Intent(this@MainActivity, DeviceAddActivity::class.java)
                 addDeviceLauncher.launch(intent)
+                true
+            }
+            R.id.menu_delete -> {
+                val intent = Intent(this@MainActivity, DeviceDeleteActivity::class.java)
+                startActivity(intent)
+                true
+            }
+            R.id.menu_notification -> {
+                if(!App.isConnected){
+                    if(App.serviceIntent == null) App.serviceIntent = Intent(applicationContext, MqttConnectionService::class.java)
+                    startForegroundService(App.serviceIntent)
+                }
+                true
+            }
+            R.id.menu_refresh -> {
+                viewModel.getDeviceList().clear()
+                CoroutineScope(Dispatchers.IO).launch {
+                    val deviceList = viewModel.database.registeredAEDAO().getAll()
+                    viewModel.getDeviceList().addAll(deviceList)
+                }.invokeOnCompletion {
+                    viewModel.refreshServiceAEList()
+                }
                 true
             }
             else -> super.onOptionsItemSelected(item)
@@ -202,12 +223,12 @@ class MainActivity : AppCompatActivity() {
                                 }
                             }
                         })
-                        aeRetrive.start();
+                        aeRetrive.start()
                     }
                 }
             }
         })
-        aeCreate.start();
+        aeCreate.start()
     }
 
     /* Get Registered Device list from room database */

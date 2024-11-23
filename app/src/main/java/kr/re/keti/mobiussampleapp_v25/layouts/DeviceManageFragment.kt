@@ -23,7 +23,6 @@ import kotlinx.coroutines.withContext
 import kr.re.keti.mobiussampleapp_v25.R
 import kr.re.keti.mobiussampleapp_v25.data.ContentInstanceObject
 import kr.re.keti.mobiussampleapp_v25.database.RegisteredAE
-import kr.re.keti.mobiussampleapp_v25.database.RegisteredAEDatabase
 import kr.re.keti.mobiussampleapp_v25.databinding.FragmentDeviceManageBinding
 import kr.re.keti.mobiussampleapp_v25.databinding.ItemRecyclerDeviceMonitorBinding
 import kr.re.keti.mobiussampleapp_v25.layouts.MainActivity.Companion.ae
@@ -59,6 +58,7 @@ class DeviceManageFragment: Fragment() {
                         viewModel.updateServiceAE(position)
                     } else Log.d("DeviceManageFragment", "registeredAE is null", )
                 } else{
+                    @Suppress("DEPRECATION")
                     val registeredAE = bundle.getParcelable("SERVICE_AE_OBJECT") as RegisteredAE?
                     val position = bundle.getInt("SERVICE_AE_POSITION")
                     if(registeredAE != null){
@@ -83,9 +83,14 @@ class DeviceManageFragment: Fragment() {
                 adapter.notifyItemChanged(it)
             }
         }
+        viewModel.serviceAEListRefresh.observe(this) {
+            if(it != null){
+                if(it) adapter.notifyDataSetChanged()
+            }
+        }
     }
 
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         _binding = FragmentDeviceManageBinding.inflate(inflater, container, false)
         return binding.root
     }

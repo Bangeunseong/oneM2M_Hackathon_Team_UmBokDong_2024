@@ -4,8 +4,8 @@ import android.app.NotificationManager
 import android.app.Service
 import android.content.Intent
 import android.os.IBinder
-import android.util.JsonReader
 import android.util.Log
+import android.widget.Toast
 import androidx.core.app.NotificationCompat
 import info.mqtt.android.service.MqttAndroidClient
 import kotlinx.coroutines.CoroutineScope
@@ -17,26 +17,22 @@ import kr.re.keti.mobiussampleapp_v25.database.RegisteredAEDatabase
 import kr.re.keti.mobiussampleapp_v25.layouts.MainActivity.Companion.csebase
 import kr.re.keti.mobiussampleapp_v25.utils.MqttClientRequest
 import kr.re.keti.mobiussampleapp_v25.utils.MqttClientRequestParser
-import kr.re.keti.mobiussampleapp_v25.utils.ParseElementXml
 import org.eclipse.paho.client.mqttv3.IMqttActionListener
 import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken
 import org.eclipse.paho.client.mqttv3.IMqttToken
 import org.eclipse.paho.client.mqttv3.MqttCallback
 import org.eclipse.paho.client.mqttv3.MqttClient
-import org.eclipse.paho.client.mqttv3.MqttConnectOptions
 import org.eclipse.paho.client.mqttv3.MqttException
 import org.eclipse.paho.client.mqttv3.MqttMessage
 import org.json.JSONObject
-import org.json.JSONTokener
-import java.util.regex.Pattern
 
-//TODO: Update Data to room database
 class MqttConnectionService: Service() {
     private var mqttClient: MqttAndroidClient? = null
     private var mqttReqTopic: String? = null
     private var mqttRespTopic: String? = null
     private lateinit var db: RegisteredAEDatabase
     private lateinit var notificationManager: NotificationManager
+
     override fun onCreate() {
         super.onCreate()
         db = RegisteredAEDatabase.getInstance(applicationContext)
@@ -66,9 +62,11 @@ class MqttConnectionService: Service() {
     override fun onDestroy() {
         super.onDestroy()
         Log.d(TAG, "MQTT Connection Destroyed")
-        createMQTT(false, mqttReqTopic!!, mqttRespTopic!!)
-        stopForeground(STOP_FOREGROUND_REMOVE)
-        stopSelf()
+        if(App.isConnected){
+            createMQTT(false, mqttReqTopic!!, mqttRespTopic!!)
+            stopForeground(STOP_FOREGROUND_REMOVE)
+            stopSelf()
+        }
     }
 
     override fun onBind(p0: Intent?): IBinder? {
@@ -86,7 +84,13 @@ class MqttConnectionService: Service() {
 
             /* MQTT Subscribe */
             mqttClient!!.setCallback(object : MqttCallback {
-                override fun connectionLost(cause: Throwable?) { Log.d(TAG, "connectionLost"); }
+                override fun connectionLost(cause: Throwable?) {
+                    Log.d(TAG, "connectionLost")
+                    Toast.makeText(applicationContext, "Connection lost to MQTT Server", Toast.LENGTH_SHORT).show()
+                    App.isConnected = false
+                    stopForeground(STOP_FOREGROUND_REMOVE)
+                    stopSelf()
+                }
                 override fun messageArrived(topic: String?, message: MqttMessage?) {
                     Log.d(TAG, "messageArrived")
 
@@ -165,6 +169,7 @@ class MqttConnectionService: Service() {
         } else {
             try {
                 if (mqttClient != null && mqttClient!!.isConnected) {
+                    App.isConnected = false
                     mqttClient!!.disconnect()
                 }
             } catch (e: MqttException) {
@@ -172,7 +177,7 @@ class MqttConnectionService: Service() {
             }
         }
     }
-
+    /* Parse MQTT Message to Pair<String, Boolean> Data Type */
     private fun parseMqttMessage(message: MqttMessage): Pair<String, Boolean> {
         val jsonObject = JSONObject(message.toString())
         val containerUrl = jsonObject.getJSONObject("pc").getJSONObject("m2m:sgn").getString("sur").toString()

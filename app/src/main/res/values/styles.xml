@@ -1,5 +1,4 @@
 <resources>
-
     <!-- Base application theme. -->
     <style name="AppTheme" parent="Theme.AppCompat.Light.NoActionBar">
         <!-- Customize your theme here. -->
@@ -7,10 +6,14 @@
         <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
         <item name="colorAccent">@color/colorAccent</item>
         <item name="textAppearanceTitleMedium">@style/ToolbarTextAppearance</item>
+        <item name="radioButtonStyle">@style/Widget.App.RadioButton</item>
     </style>
     <style name="ToolbarTextAppearance" parent="TextAppearance.AppCompat">
         <item name="android:textColor">#FFFFFF</item>
         <item name="android:textStyle">bold</item>
         <item name="android:textSize">20sp</item>
+    </style>
+    <style name="Widget.App.RadioButton" parent="Widget.MaterialComponents.CompoundButton.RadioButton">
+        <item name="buttonTint">@color/button_tint</item>
     </style>
 </resources>

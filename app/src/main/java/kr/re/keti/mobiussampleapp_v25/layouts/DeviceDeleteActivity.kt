@@ -5,65 +5,34 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import androidx.fragment.app.Fragment
-import androidx.fragment.app.activityViewModels
+import androidx.activity.viewModels
+import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import kr.re.keti.mobiussampleapp_v25.database.RegisteredAE
-import kr.re.keti.mobiussampleapp_v25.databinding.FragmentDeviceListBinding
-import kr.re.keti.mobiussampleapp_v25.databinding.ItemRecyclerDeviceBinding
+import kr.re.keti.mobiussampleapp_v25.databinding.ActivityDeleteDeviceBinding
+import kr.re.keti.mobiussampleapp_v25.databinding.ItemRecyclerDeviceDeleteBinding
 
-class DeviceListFragment : Fragment() {
-    // Field for this fragment
-    private var _binding: FragmentDeviceListBinding? = null
+class DeviceDeleteActivity: AppCompatActivity() {
+    private var _binding: ActivityDeleteDeviceBinding? = null
     private val binding get() = _binding!!
     private var _adapter: DeviceAdapter? = null
     private val adapter get() = _adapter!!
+    private val deleteList = mutableListOf<RegisteredAE>()
 
-    private val viewModel: MainViewModel by activityViewModels()
+    private val viewModel: MainViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        _binding = ActivityDeleteDeviceBinding.inflate(layoutInflater)
         _adapter = DeviceAdapter(viewModel.getDeviceList())
-        viewModel.serviceAEAdd.observe(this) {
-            if (it != null) {
-                adapter.notifyItemInserted(it)
-            }
-        }
-        viewModel.serviceAEUpdate.observe(this) {
-            if (it != null) {
-                adapter.notifyItemChanged(it)
-            }
-        }
-        viewModel.serviceAEListRefresh.observe(this) {
-            if(it != null){
-                if(it) adapter.notifyDataSetChanged()
-            }
-        }
-    }
 
-    // onCreateView -> Declare layout
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
-        // Inflate the layout for this fragment
-        _binding = FragmentDeviceListBinding.inflate(inflater, container, false)
-        return binding.root
-    }
-
-    // onViewCreated -> Method Declaration
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        super.onViewCreated(view, savedInstanceState)
-
-        binding.deviceRecyclerView.setHasFixedSize(false)
         binding.deviceRecyclerView.adapter = adapter
-        binding.deviceRecyclerView.layoutManager = GridLayoutManager(context, 2, RecyclerView.VERTICAL, false)
         binding.deviceRecyclerView.addItemDecoration(ItemPadding(5,5))
-    }
+        binding.deviceRecyclerView.layoutManager = GridLayoutManager(this, 2, RecyclerView.VERTICAL, false)
+        binding.deviceRecyclerView.setHasFixedSize(false)
 
-    override fun onDestroy() {
-        super.onDestroy()
-
-        _binding = null
-        _adapter = null
+        setContentView(binding.root)
     }
 
     // Inner Class For Decorating Recycler View of Device List
@@ -87,7 +56,7 @@ class DeviceListFragment : Fragment() {
     // Inner Class For Setting Adapter in Device Recycler View
     inner class DeviceAdapter(private val deviceList: MutableList<RegisteredAE>) : RecyclerView.Adapter<DeviceAdapter.ViewHolder>() {
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
-            return ViewHolder(ItemRecyclerDeviceBinding.inflate(LayoutInflater.from(parent.context), parent, false))
+            return ViewHolder(ItemRecyclerDeviceDeleteBinding.inflate(LayoutInflater.from(parent.context), parent, false))
         }
 
         override fun onBindViewHolder(holder: ViewHolder, position: Int) {
@@ -98,10 +67,17 @@ class DeviceListFragment : Fragment() {
             return deviceList.size
         }
 
-        inner class ViewHolder(private val binding: ItemRecyclerDeviceBinding): RecyclerView.ViewHolder(binding.root) {
+        inner class ViewHolder(private val binding: ItemRecyclerDeviceDeleteBinding): RecyclerView.ViewHolder(binding.root) {
             fun bind(device: RegisteredAE){
                 binding.deviceName.text = device.applicationName
                 binding.deviceStatus.text = if(device.isRegistered) "Registered" else "Unregistered"
+                binding.radioButton2.setOnCheckedChangeListener { compoundButton, b ->
+                    if(b){
+                        deleteList.add(device)
+                    }else{
+                        deleteList.remove(device)
+                    }
+                }
             }
         }
     }

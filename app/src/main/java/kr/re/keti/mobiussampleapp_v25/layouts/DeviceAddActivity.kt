@@ -44,7 +44,7 @@ class DeviceAddActivity: AppCompatActivity(), DeviceAddListener {
     }
 
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
-        menuInflater.inflate(R.menu.menu_add_option, menu)
+        menuInflater.inflate(R.menu.menu_add, menu)
         return super.onCreateOptionsMenu(menu)
     }
 
