@@ -52,6 +52,7 @@ class MqttConnectionService: Service() {
             .setContentText("MQTT is running in the background")
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setAutoCancel(false)
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .build()
         startForeground(1, notification)

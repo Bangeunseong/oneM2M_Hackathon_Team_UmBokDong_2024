@@ -16,6 +16,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kr.re.keti.mobiussampleapp_v25.R
 import kr.re.keti.mobiussampleapp_v25.database.RegisteredAE
+import kr.re.keti.mobiussampleapp_v25.database.RegisteredAEDatabase
 import kr.re.keti.mobiussampleapp_v25.databinding.ActivityDeleteDeviceBinding
 import kr.re.keti.mobiussampleapp_v25.databinding.ItemRecyclerDeviceDeleteBinding
 
@@ -26,12 +27,18 @@ class DeviceDeleteActivity: AppCompatActivity() {
     private val adapter get() = _adapter!!
     private val deleteList = mutableListOf<Int>()
 
-    private val viewModel: MainViewModel by viewModels()
+    private lateinit var db: RegisteredAEDatabase
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        db = RegisteredAEDatabase.getInstance(applicationContext)
         _binding = ActivityDeleteDeviceBinding.inflate(layoutInflater)
-        _adapter = DeviceAdapter(viewModel.getDeviceList())
+        _adapter = DeviceAdapter(mutableListOf())
+
+        CoroutineScope(Dispatchers.IO).launch {
+            val deviceList = db.registeredAEDAO().getAll()
+            adapter.setList(deviceList)
+        }
 
         binding.deviceRecyclerView.adapter = adapter
         binding.deviceRecyclerView.addItemDecoration(ItemPadding(5,5))
@@ -102,6 +109,14 @@ class DeviceDeleteActivity: AppCompatActivity() {
 
         override fun getItemCount(): Int {
             return deviceList.size
+        }
+
+        fun setList(list: List<RegisteredAE>){
+            deviceList.clear()
+            for(device in list){
+                deviceList.add(device)
+                notifyItemInserted(deviceList.lastIndex)
+            }
         }
 
         inner class ViewHolder(private val binding: ItemRecyclerDeviceDeleteBinding): RecyclerView.ViewHolder(binding.root) {

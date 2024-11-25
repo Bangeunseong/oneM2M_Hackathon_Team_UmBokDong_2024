@@ -39,7 +39,6 @@ import kr.re.keti.mobiussampleapp_v25.data.ContentSubscribeObject
 import kr.re.keti.mobiussampleapp_v25.database.RegisteredAE
 import kr.re.keti.mobiussampleapp_v25.databinding.ActivityMainBinding
 import kr.re.keti.mobiussampleapp_v25.services.MqttConnectionService
-import timber.log.Timber
 import java.io.BufferedReader
 import java.io.DataOutputStream
 import java.io.InputStreamReader
@@ -62,7 +61,7 @@ class MainActivity : AppCompatActivity() {
     private var handler: Handler = Handler(Looper.myLooper()!!)
 
     private val MQTTPort = "1883"
-    private val Mobius_Address = "192.168.55.35"
+    private val Mobius_Address = "172.16.78.111"
 
     private val viewModel: MainViewModel by viewModels()
 
@@ -83,19 +82,13 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    //TODO: Unsubscribe Specified Device
     private val deleteDeviceLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()){ result ->
         if(result.resultCode == RESULT_OK){
             val bundle = result.data?.extras ?: return@registerForActivityResult
             val deleteList = bundle.getIntArray("DELETED_AE") ?: return@registerForActivityResult
-
-            CoroutineScope(Dispatchers.IO).launch {
-                val deleteAEs = mutableListOf<RegisteredAE>()
-                for(position in deleteList){ deleteAEs.add(viewModel.getDeviceList()[position]) }
-                for(device in deleteAEs){
-                    viewModel.deleteServiceAE(viewModel.getDeviceList().indexOf(device))
-                    viewModel.getDeviceList().remove(device)
-                    viewModel.database.registeredAEDAO().delete(device)
-                }
+            CoroutineScope(Dispatchers.Default).launch {
+                removeDevice(deleteList.toList())
             }.invokeOnCompletion {
                 if(it != null)
                     Log.d(TAG,"Deletion Failed: ${it.cause}")
@@ -317,6 +310,23 @@ class MainActivity : AppCompatActivity() {
             if(!App.isConnected){
                 App.isConnected = true
                 startForegroundService(App.serviceIntent)
+            }
+        }
+    }
+
+    /* Unregister device */
+    private suspend fun removeDevice(list: List<Int>) = coroutineScope{
+        val deleteList = async {
+            val values = mutableListOf<RegisteredAE>()
+            for(index in list) values.add(viewModel.getDeviceList()[index])
+            values
+        }
+        withContext(Dispatchers.Main){
+            val data = deleteList.await()
+            for(device in data){
+                viewModel.deleteServiceAE(viewModel.getDeviceList().indexOf(device))
+                viewModel.getDeviceList().remove(device)
+                viewModel.database.registeredAEDAO().delete(device)
             }
         }
     }

@@ -29,6 +29,10 @@
         <service android:name=".services.MqttConnectionService"
             android:exported="false"
             android:foregroundServiceType="dataSync" />
+
+        <activity android:name=".layouts.DeviceDeleteActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustPan" />
         <activity
             android:name=".layouts.DeviceControlActivity"
             android:exported="false"

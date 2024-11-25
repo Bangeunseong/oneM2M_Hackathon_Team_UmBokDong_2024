@@ -9,7 +9,7 @@
     <com.google.android.material.appbar.AppBarLayout
         android:id="@+id/appbar"
 
-        android:layout_height="192dp"
+        android:layout_height="140dp"
         android:layout_width="match_parent">
 
         <com.google.android.material.appbar.CollapsingToolbarLayout
@@ -37,12 +37,20 @@
 
         <androidx.constraintlayout.widget.ConstraintLayout
             android:layout_width="match_parent"
-            android:layout_height="match_parent">
+            android:layout_height="match_parent"
+            android:background="@color/colorPrimary"
+            android:gravity="center_horizontal"
+            android:paddingHorizontal="10dp"
+            android:foregroundGravity="center_horizontal">
 
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/device_recycler_view"
                 android:layout_width="match_parent"
-                android:layout_height="match_parent" />
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
         </androidx.constraintlayout.widget.ConstraintLayout>
 
     </androidx.core.widget.NestedScrollView>
