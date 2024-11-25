@@ -83,6 +83,11 @@ class DeviceManageFragment: Fragment() {
                 adapter.notifyItemChanged(it)
             }
         }
+        viewModel.serviceAEDelete.observe(this){
+            if(it != null){
+                adapter.notifyItemRemoved(it)
+            }
+        }
         viewModel.serviceAEListRefresh.observe(this) {
             if(it != null){
                 if(it) adapter.notifyDataSetChanged()

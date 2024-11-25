@@ -13,12 +13,14 @@ import kr.re.keti.mobiussampleapp_v25.database.RegisteredAEDatabase
 class MainViewModel: ViewModel() {
     private val mutableServiceAEAdd = MutableLiveData<Int?>()
     private val mutableServiceAEUpdate = MutableLiveData<Int?>()
+    private val mutableServiceAEDelete = MutableLiveData<Int?>()
     private val mutableDeviceListRefresh = MutableLiveData<Boolean?>()
     private val mutableDeviceList = mutableListOf<RegisteredAE>()
     private lateinit var db: RegisteredAEDatabase
 
     val serviceAEAdd: LiveData<Int?> get() = mutableServiceAEAdd
     val serviceAEUpdate: LiveData<Int?> get() = mutableServiceAEUpdate
+    val serviceAEDelete: LiveData<Int?> get() = mutableServiceAEDelete
     val serviceAEListRefresh: LiveData<Boolean?> get() = mutableDeviceListRefresh
     val database: RegisteredAEDatabase get() = db
 
@@ -35,6 +37,10 @@ class MainViewModel: ViewModel() {
 
     fun updateServiceAE(position: Int?){
         mutableServiceAEUpdate.value = position
+    }
+
+    fun deleteServiceAE(position: Int?){
+        mutableServiceAEDelete.value = position
     }
 
     fun refreshServiceAEList(){

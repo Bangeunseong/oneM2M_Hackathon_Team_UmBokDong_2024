@@ -3,12 +3,18 @@ package kr.re.keti.mobiussampleapp_v25.layouts
 import android.graphics.Rect
 import android.os.Bundle
 import android.view.LayoutInflater
+import android.view.Menu
+import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kr.re.keti.mobiussampleapp_v25.R
 import kr.re.keti.mobiussampleapp_v25.database.RegisteredAE
 import kr.re.keti.mobiussampleapp_v25.databinding.ActivityDeleteDeviceBinding
 import kr.re.keti.mobiussampleapp_v25.databinding.ItemRecyclerDeviceDeleteBinding
@@ -18,7 +24,7 @@ class DeviceDeleteActivity: AppCompatActivity() {
     private val binding get() = _binding!!
     private var _adapter: DeviceAdapter? = null
     private val adapter get() = _adapter!!
-    private val deleteList = mutableListOf<RegisteredAE>()
+    private val deleteList = mutableListOf<Int>()
 
     private val viewModel: MainViewModel by viewModels()
 
@@ -32,7 +38,38 @@ class DeviceDeleteActivity: AppCompatActivity() {
         binding.deviceRecyclerView.layoutManager = GridLayoutManager(this, 2, RecyclerView.VERTICAL, false)
         binding.deviceRecyclerView.setHasFixedSize(false)
 
+        binding.toolbar.setTitle("Delete")
+        setSupportActionBar(binding.toolbar)
         setContentView(binding.root)
+    }
+
+    override fun onCreateOptionsMenu(menu: Menu?): Boolean {
+        menuInflater.inflate(R.menu.menu_delete, menu)
+        return super.onCreateOptionsMenu(menu)
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        return when(item.itemId){
+            android.R.id.home -> {
+                setResult(RESULT_CANCELED)
+                finish()
+                true
+            }
+            R.id.menu_ok -> {
+                val bundle = Bundle()
+                bundle.putIntArray("DELETED_AE", deleteList.toIntArray())
+                intent.putExtras(bundle)
+                setResult(RESULT_OK, intent)
+                finish()
+                true
+            }
+            R.id.menu_cancel -> {
+                setResult(RESULT_CANCELED)
+                finish()
+                true
+            }
+            else -> super.onOptionsItemSelected(item)
+        }
     }
 
     // Inner Class For Decorating Recycler View of Device List
@@ -71,11 +108,11 @@ class DeviceDeleteActivity: AppCompatActivity() {
             fun bind(device: RegisteredAE){
                 binding.deviceName.text = device.applicationName
                 binding.deviceStatus.text = if(device.isRegistered) "Registered" else "Unregistered"
-                binding.radioButton2.setOnCheckedChangeListener { compoundButton, b ->
-                    if(b){
-                        deleteList.add(device)
+                binding.toggleCheckBtn.setOnCheckedChangeListener { _, isChecked ->
+                    if(isChecked){
+                        deleteList.add(layoutPosition)
                     }else{
-                        deleteList.remove(device)
+                        deleteList.remove(layoutPosition)
                     }
                 }
             }

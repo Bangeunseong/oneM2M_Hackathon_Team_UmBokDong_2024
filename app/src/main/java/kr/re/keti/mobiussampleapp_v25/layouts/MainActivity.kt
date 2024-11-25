@@ -75,11 +75,34 @@ class MainActivity : AppCompatActivity() {
                 setDeviceStatus(serviceAE)
             }.invokeOnCompletion {
                 if(it != null)
-                    Timber.tag(TAG).d("Registration Failed: ${it.cause}")
-                else Timber.tag(TAG).d("Registration Succeeded")
+                    Log.d(TAG,"Registration Failed: ${it.cause}")
+                else Log.d(TAG, "Registration Succeeded")
             }
         } else{
-            Timber.tag(TAG).d("Registration Canceled")
+            Log.d(TAG, "Registration Canceled")
+        }
+    }
+
+    private val deleteDeviceLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()){ result ->
+        if(result.resultCode == RESULT_OK){
+            val bundle = result.data?.extras ?: return@registerForActivityResult
+            val deleteList = bundle.getIntArray("DELETED_AE") ?: return@registerForActivityResult
+
+            CoroutineScope(Dispatchers.IO).launch {
+                val deleteAEs = mutableListOf<RegisteredAE>()
+                for(position in deleteList){ deleteAEs.add(viewModel.getDeviceList()[position]) }
+                for(device in deleteAEs){
+                    viewModel.deleteServiceAE(viewModel.getDeviceList().indexOf(device))
+                    viewModel.getDeviceList().remove(device)
+                    viewModel.database.registeredAEDAO().delete(device)
+                }
+            }.invokeOnCompletion {
+                if(it != null)
+                    Log.d(TAG,"Deletion Failed: ${it.cause}")
+                else Log.d(TAG,"Deletion Succeeded")
+            }
+        } else{
+            Log.d(TAG,"Deletion Canceled")
         }
     }
 
@@ -162,7 +185,7 @@ class MainActivity : AppCompatActivity() {
             }
             R.id.menu_delete -> {
                 val intent = Intent(this@MainActivity, DeviceDeleteActivity::class.java)
-                startActivity(intent)
+                deleteDeviceLauncher.launch(intent)
                 true
             }
             R.id.menu_notification -> {
