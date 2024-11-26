@@ -442,7 +442,6 @@ function createContentInstance(name,typeIndex,fire){
     } else {
         con = random(templates[typeIndex].min, templates[typeIndex].max).toString();
     }
-
 	var object = {
 		typeIndex: typeIndex,
 		type: templates[typeIndex].type,
