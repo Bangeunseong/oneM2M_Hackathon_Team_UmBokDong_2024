@@ -34,12 +34,37 @@ class ContentSubscribeObject {
         xml += "<enc>"
         xml += "<net>3 4</net>"
         xml += "</enc>"
-        xml += "<nu>mqtt://$content_url/$subscribe_path</nu>"
+        xml += "<nu>"
+        if(subscribe_path.isNotBlank())
+            xml += "mqtt://$content_url/$subscribe_path"
+        xml += "</nu>"
         xml += "<pn>1</pn>"
         xml += "<nct>2</nct>"
         xml += "<cr>$origin_id</cr>"
         xml += "</m2m:sub>"
 
+        return xml
+    }
+
+    fun makeXML(subscribePaths: List<String>): String {
+        var xml = ""
+        xml += "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+        xml += "<m2m:sub "
+        xml += "xmlns:m2m=\"http://www.onem2m.org/xml/protocols\" "
+        xml += "xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" rn=\"$resource_name\">"
+        xml += "<enc>"
+        xml += "<net>3 4</net>"
+        xml += "</enc>"
+        xml += "<nu>"
+        for (i in subscribePaths.indices) {
+            if(i != 0) xml += " "
+            xml += "mqtt://$content_url/${subscribePaths[i]}"
+        }
+        xml += "</nu>"
+        xml += "<pn>1</pn>"
+        xml += "<nct>2</nct>"
+        xml += "<cr>$origin_id</cr>"
+        xml += "</m2m:sub>"
         return xml
     }
 }

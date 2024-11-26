@@ -61,7 +61,8 @@ class MainActivity : AppCompatActivity() {
     private var handler: Handler = Handler(Looper.myLooper()!!)
 
     private val MQTTPort = "1883"
-    private val Mobius_Address = "172.16.78.111"
+    private val Mobius_Address = "172.25.112.1"
+    private var notificationURIs: MutableList<String>? = null
 
     private val viewModel: MainViewModel by viewModels()
 
@@ -87,12 +88,35 @@ class MainActivity : AppCompatActivity() {
         if(result.resultCode == RESULT_OK){
             val bundle = result.data?.extras ?: return@registerForActivityResult
             val deleteList = bundle.getIntArray("DELETED_AE") ?: return@registerForActivityResult
-            CoroutineScope(Dispatchers.Default).launch {
-                removeDevice(deleteList.toList())
-            }.invokeOnCompletion {
-                if(it != null)
-                    Log.d(TAG,"Deletion Failed: ${it.cause}")
-                else Log.d(TAG,"Deletion Succeeded")
+
+            CoroutineScope(Dispatchers.IO).launch {
+                val registeredAEs = mutableListOf<RegisteredAE>()
+                for(index in deleteList) registeredAEs.add(viewModel.getDeviceList()[index])
+                for(device in registeredAEs){
+                    val getSubscribeResource = GetSubscribeResource("DATA",device.applicationName+"_pres")
+                    getSubscribeResource.setReceiver(object : IReceived{
+                        override fun getResponseBody(msg: String) {
+                            if(msg.toInt() == 200){
+                                // TODO: Add removal of notification uris in ${notificationURIs}
+                                val modifySubscribeResource = ModifySubscribeResource("DATA", device.applicationName+"_pres")
+                                modifySubscribeResource.setReceiver(object : IReceived{
+                                    override fun getResponseBody(msg: String) {
+                                        Log.d(TAG, "$msg")
+                                        CoroutineScope(Dispatchers.Default).launch {
+                                            removeDevice(deleteList.toList())
+                                        }.invokeOnCompletion {
+                                            if(it != null)
+                                                Log.d(TAG,"Deletion Failed: ${it.cause}")
+                                            else Log.d(TAG,"Deletion Succeeded")
+                                        }
+                                    }
+                                })
+                                modifySubscribeResource.start()
+                            }
+                        }
+                    })
+                    getSubscribeResource.start()
+                }
             }
         } else{
             Log.d(TAG,"Deletion Canceled")
@@ -246,7 +270,6 @@ class MainActivity : AppCompatActivity() {
         })
         aeCreate.start()
     }
-
     /* Get Registered Device list from room database */
     private suspend fun setDeviceList() = coroutineScope {
         val getList = async { viewModel.database.registeredAEDAO().getAll() }
@@ -313,7 +336,6 @@ class MainActivity : AppCompatActivity() {
             }
         }
     }
-
     /* Unregister device */
     private suspend fun removeDevice(list: List<Int>) = coroutineScope{
         val deleteList = async {
@@ -443,8 +465,7 @@ class MainActivity : AppCompatActivity() {
             }
         }
     }
-
-    /* Retrieve AE-ID */
+    /* Retrieve AE */
     internal inner class aeRetrieveRequest : Thread() {
         private val LOG: Logger = Logger.getLogger(
             aeRetrieveRequest::class.java.name
@@ -501,7 +522,6 @@ class MainActivity : AppCompatActivity() {
             }
         }
     }
-
     /* Retrieve Sensor Data */
     internal inner class RetrieveRequest : Thread {
         private val LOG: Logger = Logger.getLogger(
@@ -558,7 +578,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    /* Subscribe Presence Content Resource */
+    /* Create Subscribe Content Resource */
     internal inner class CreateSubscribeResource(private val containerName: String, private val serviceAEName: String) : Thread() {
         private val LOG: Logger = Logger.getLogger(
             CreateSubscribeResource::class.java.name
@@ -607,6 +627,125 @@ class MainActivity : AppCompatActivity() {
 
                 val `in` = BufferedReader(InputStreamReader(conn.inputStream))
 
+                var resp = ""
+                var strLine = ""
+                while ((`in`.readLine().also { strLine = it }) != null) {
+                    resp += strLine
+                }
+
+                if (resp !== "") {
+                    receiver!!.getResponseBody(resp)
+                }
+                conn.disconnect()
+            } catch (exp: Exception) {
+                LOG.log(Level.SEVERE, exp.message)
+            }
+        }
+    }
+    /* Get Subscribe Content Resource */
+    internal inner class GetSubscribeResource(private val containerName: String, private val serviceAEName: String) : Thread() {
+        private val LOG: Logger = Logger.getLogger(
+            GetSubscribeResource::class.java.name
+        )
+        private var receiver: IReceived? = null
+        var responseCode: Int = 0
+
+        fun setReceiver(hanlder: IReceived?) {
+            this.receiver = hanlder
+        }
+
+        override fun run() {
+            try {
+                val sb = csebase.serviceUrl + "/" + serviceAEName + "/" + containerName + "/" + ae.aEid+"_rn"
+
+                val mUrl = URL(sb)
+
+                val conn = mUrl.openConnection() as HttpURLConnection
+                conn.requestMethod = "GET"
+                conn.doInput = true
+                conn.doOutput = false
+
+                conn.setRequestProperty("Accept", "application/xml")
+                conn.setRequestProperty("X-M2M-RI", "12345")
+                conn.setRequestProperty("X-M2M-Origin", ae.aEid)
+                conn.setRequestProperty("nmtype", "short")
+                conn.connect()
+
+                responseCode = conn.responseCode
+
+                var `in`: BufferedReader? = null
+                if (responseCode == 200) {
+                    // Get AEID from Response Data
+                    `in` = BufferedReader(InputStreamReader(conn.inputStream))
+
+                    var resp = ""
+                    var strLine: String
+                    while ((`in`.readLine().also { strLine = it }) != null) {
+                        resp += strLine
+                    }
+
+                    val pxml = ParseElementXml()
+                    notificationURIs = pxml.GetElementXml(resp, "nu").split(",").toMutableList()
+                    Log.d(TAG, "Retrieve Get Notification URIs in subscription resource[$notificationURIs]")
+                    `in`.close()
+                }
+                if (responseCode != 0) {
+                    receiver!!.getResponseBody(responseCode.toString())
+                }
+                conn.disconnect()
+            } catch (exp: Exception) {
+                LOG.log(Level.SEVERE, exp.message)
+            }
+        }
+    }
+    /* Modify Subscribe Content Resource */
+    internal inner class ModifySubscribeResource(private val containerName: String, private val serviceAEName: String) : Thread() {
+        private val LOG: Logger = Logger.getLogger(
+            ModifySubscribeResource::class.java.name
+        )
+        private var receiver: IReceived? = null
+
+        fun setReceiver(hanlder: IReceived?) {
+            this.receiver = hanlder
+        }
+
+        var subscribeInstance: ContentSubscribeObject = ContentSubscribeObject()
+
+        init {
+            subscribeInstance.setUrl(csebase.host)
+            subscribeInstance.setResourceName(ae.aEid + "_rn")
+            subscribeInstance.setOrigin_id(ae.aEid)
+        }
+
+        override fun run() {
+            try {
+                val sb = csebase.serviceUrl + "/" + serviceAEName + "/" + containerName + "/" + ae.aEid+"_rn"
+                val mUrl = URL(sb)
+                val conn = mUrl.openConnection() as HttpURLConnection
+
+                conn.requestMethod = "PUT"
+                conn.doInput = true
+                conn.doOutput = true
+                conn.useCaches = false
+                conn.instanceFollowRedirects = false
+
+                conn.setRequestProperty("Accept", "application/xml")
+                conn.setRequestProperty("X-M2M-RI", "12345")
+                conn.setRequestProperty("X-M2M-Origin", ae.aEid)
+                conn.setRequestProperty("Content-Type", "application/vnd.onem2m-res+xml; ty=23")
+                conn.setRequestProperty("nmtype", "short")
+
+                val reqmqttContent =
+                    if(notificationURIs != null) subscribeInstance.makeXML(notificationURIs!!)
+                    else subscribeInstance.makeXML()
+                conn.setRequestProperty("Content-Length", reqmqttContent.length.toString())
+
+                val dos = DataOutputStream(conn.outputStream)
+                dos.write(reqmqttContent.toByteArray())
+                dos.flush()
+                dos.close()
+
+                val `in` = BufferedReader(InputStreamReader(conn.inputStream))
                 var resp = ""
                 var strLine = ""
                 while ((`in`.readLine().also { strLine = it }) != null) {
