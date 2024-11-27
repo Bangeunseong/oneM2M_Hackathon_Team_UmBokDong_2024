@@ -61,8 +61,7 @@ class MainActivity : AppCompatActivity() {
     private var handler: Handler = Handler(Looper.myLooper()!!)
 
     private val MQTTPort = "1883"
-    private val Mobius_Address = "172.25.112.1"
-    private var notificationURIs: MutableList<String>? = null
+    private val Mobius_Address = "172.16.78.111"
 
     private val viewModel: MainViewModel by viewModels()
 
@@ -89,34 +88,12 @@ class MainActivity : AppCompatActivity() {
             val bundle = result.data?.extras ?: return@registerForActivityResult
             val deleteList = bundle.getIntArray("DELETED_AE") ?: return@registerForActivityResult
 
-            CoroutineScope(Dispatchers.IO).launch {
-                val registeredAEs = mutableListOf<RegisteredAE>()
-                for(index in deleteList) registeredAEs.add(viewModel.getDeviceList()[index])
-                for(device in registeredAEs){
-                    val getSubscribeResource = GetSubscribeResource("DATA",device.applicationName+"_pres")
-                    getSubscribeResource.setReceiver(object : IReceived{
-                        override fun getResponseBody(msg: String) {
-                            if(msg.toInt() == 200){
-                                // TODO: Add removal of notification uris in ${notificationURIs}
-                                val modifySubscribeResource = ModifySubscribeResource("DATA", device.applicationName+"_pres")
-                                modifySubscribeResource.setReceiver(object : IReceived{
-                                    override fun getResponseBody(msg: String) {
-                                        Log.d(TAG, "$msg")
-                                        CoroutineScope(Dispatchers.Default).launch {
-                                            removeDevice(deleteList.toList())
-                                        }.invokeOnCompletion {
-                                            if(it != null)
-                                                Log.d(TAG,"Deletion Failed: ${it.cause}")
-                                            else Log.d(TAG,"Deletion Succeeded")
-                                        }
-                                    }
-                                })
-                                modifySubscribeResource.start()
-                            }
-                        }
-                    })
-                    getSubscribeResource.start()
-                }
+            CoroutineScope(Dispatchers.Default).launch {
+                removeDevice(deleteList.toList())
+            }.invokeOnCompletion {
+                if(it != null)
+                    Log.d(TAG,"Deletion Failed: ${it.cause}")
+                else Log.d(TAG,"Deletion Succeeded")
             }
         } else{
             Log.d(TAG,"Deletion Canceled")
@@ -338,13 +315,31 @@ class MainActivity : AppCompatActivity() {
     }
     /* Unregister device */
     private suspend fun removeDevice(list: List<Int>) = coroutineScope{
-        val deleteList = async {
+        val getDeletedDevices = async {
             val values = mutableListOf<RegisteredAE>()
             for(index in list) values.add(viewModel.getDeviceList()[index])
+
+            for(device in values){
+                val subscribeResource = GetSubscribeResource("DATA", device.applicationName+"_pres")
+                subscribeResource.setReceiver(object : IReceived{
+                    override fun getResponseBody(msg: String) {
+                        if(msg.toInt() == 200){
+                            val modifySubscribeResource = ModifySubscribeResource("DATA", device.applicationName+"_pres")
+                            modifySubscribeResource.setReceiver(object : IReceived{
+                                override fun getResponseBody(msg: String) {
+                                    Log.d(TAG, "$msg")
+                                }
+                            })
+                            modifySubscribeResource.start()
+                        }
+                    }
+                })
+                subscribeResource.start()
+            }
             values
         }
         withContext(Dispatchers.Main){
-            val data = deleteList.await()
+            val data = getDeletedDevices.await()
             for(device in data){
                 viewModel.deleteServiceAE(viewModel.getDeviceList().indexOf(device))
                 viewModel.getDeviceList().remove(device)
@@ -685,8 +680,9 @@ class MainActivity : AppCompatActivity() {
                     }
 
                     val pxml = ParseElementXml()
-                    notificationURIs = pxml.GetElementXml(resp, "nu").split(",").toMutableList()
-                    Log.d(TAG, "Retrieve Get Notification URIs in subscription resource[$notificationURIs]")
+                    notificationURIs.clear()
+                    notificationURIs.addAll(pxml.GetElementXml(resp, "nu").split(","))
+                    Log.d(TAG, "${pxml.GetElementXml(resp, "nu").split(",")}")
                     `in`.close()
                 }
                 if (responseCode != 0) {
@@ -719,11 +715,11 @@ class MainActivity : AppCompatActivity() {
 
         override fun run() {
             try {
-                val sb = csebase.serviceUrl + "/" + serviceAEName + "/" + containerName + "/" + ae.aEid+"_rn"
+                val sb = csebase.serviceUrl + "/" + serviceAEName + "/" + containerName
                 val mUrl = URL(sb)
                 val conn = mUrl.openConnection() as HttpURLConnection
 
-                conn.requestMethod = "PUT"
+                conn.requestMethod = "POST"
                 conn.doInput = true
                 conn.doOutput = true
                 conn.useCaches = false
@@ -736,8 +732,7 @@ class MainActivity : AppCompatActivity() {
                 conn.setRequestProperty("nmtype", "short")
 
                 val reqmqttContent =
-                    if(notificationURIs != null) subscribeInstance.makeXML(notificationURIs!!)
-                    else subscribeInstance.makeXML()
+                    subscribeInstance.makeXML(notificationURIs)
                 conn.setRequestProperty("Content-Length", reqmqttContent.length.toString())
 
                 val dos = DataOutputStream(conn.outputStream)
@@ -767,6 +762,7 @@ class MainActivity : AppCompatActivity() {
     companion object {
         val csebase = CSEBase()
         val ae = AE()
+        private val notificationURIs = mutableListOf<String>()
         private const val TAG = "MainActivity"
     }
 }

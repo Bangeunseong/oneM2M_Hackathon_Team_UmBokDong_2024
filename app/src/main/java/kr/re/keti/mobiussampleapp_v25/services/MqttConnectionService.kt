@@ -89,8 +89,7 @@ class MqttConnectionService: Service() {
                     Log.d(TAG, "connectionLost")
                     Toast.makeText(applicationContext, "Connection lost to MQTT Server", Toast.LENGTH_SHORT).show()
                     App.isConnected = false
-                    stopForeground(STOP_FOREGROUND_REMOVE)
-                    stopSelf()
+                    mqttClient!!.reconnect()
                 }
                 override fun messageArrived(topic: String?, message: MqttMessage?) {
                     Log.d(TAG, "messageArrived")
