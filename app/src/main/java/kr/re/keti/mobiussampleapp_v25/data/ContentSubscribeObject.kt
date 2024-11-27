@@ -58,10 +58,9 @@ class ContentSubscribeObject {
         xml += "<nu>"
         for (i in subscribePaths.indices) {
             if(i != 0) xml += " "
-            xml += "mqtt://$content_url/${subscribePaths[i]}"
+            xml += subscribePaths[i]
         }
         xml += "</nu>"
-        xml += "<pn>1</pn>"
         xml += "<nct>2</nct>"
         xml += "<cr>$origin_id</cr>"
         xml += "</m2m:sub>"

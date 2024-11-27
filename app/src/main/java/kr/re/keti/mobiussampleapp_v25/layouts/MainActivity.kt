@@ -61,7 +61,7 @@ class MainActivity : AppCompatActivity() {
     private var handler: Handler = Handler(Looper.myLooper()!!)
 
     private val MQTTPort = "1883"
-    private val Mobius_Address = "172.16.78.111"
+    private val Mobius_Address = "192.168.55.35"
 
     private val viewModel: MainViewModel by viewModels()
 
@@ -715,11 +715,11 @@ class MainActivity : AppCompatActivity() {
 
         override fun run() {
             try {
-                val sb = csebase.serviceUrl + "/" + serviceAEName + "/" + containerName
+                val sb = csebase.serviceUrl + "/" + serviceAEName + "/" + containerName + "/" + ae.aEid + "_rn"
                 val mUrl = URL(sb)
                 val conn = mUrl.openConnection() as HttpURLConnection
 
-                conn.requestMethod = "POST"
+                conn.requestMethod = "PUT"
                 conn.doInput = true
                 conn.doOutput = true
                 conn.useCaches = false
@@ -729,7 +729,7 @@ class MainActivity : AppCompatActivity() {
                 conn.setRequestProperty("X-M2M-RI", "12345")
                 conn.setRequestProperty("X-M2M-Origin", ae.aEid)
                 conn.setRequestProperty("Content-Type", "application/vnd.onem2m-res+xml; ty=23")
-                conn.setRequestProperty("nmtype", "short")
+                conn.setRequestProperty("locale", "ko")
 
                 val reqmqttContent =
                     subscribeInstance.makeXML(notificationURIs)
