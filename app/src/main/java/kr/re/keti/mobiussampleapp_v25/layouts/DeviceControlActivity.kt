@@ -40,17 +40,17 @@ import java.util.logging.Logger
 class DeviceControlActivity: AppCompatActivity(), OnMapReadyCallback {
     private var _binding: ActivityDeviceControlBinding? = null
     private val binding get() = _binding!!
-    private val mutableLiveData = MutableLiveData<Pair<Float, Float>>()
+    private val mutableLiveData = MutableLiveData<Pair<Double, Double>>()
 
     private var MQTT_Req_Topic = ""
     private var MQTT_Resp_Topic = ""
-
     private var handler = Executors.newSingleThreadExecutor()
     private var isOpened = false
+    private val job = Job()
+
     private lateinit var deviceAEName: String
     private lateinit var db: RegisteredAEDatabase
     private lateinit var callback: OnBackPressedCallback
-    private val job = Job()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -97,7 +97,7 @@ class DeviceControlActivity: AppCompatActivity(), OnMapReadyCallback {
                         CoroutineScope(Dispatchers.IO).launch {
                             val registeredAE = db.registeredAEDAO().get(deviceAEName)
                             Log.d(TAG, "RegisteredAE: ${registeredAE!!.isLedTurnedOn}")
-                            registeredAE!!.isLedTurnedOn = pxml.GetElementXml(msg, "con") != "0"
+                            registeredAE.isLedTurnedOn = pxml.GetElementXml(msg, "con") != "0"
                             db.registeredAEDAO().update(registeredAE)
                         }
                     }
@@ -115,7 +115,8 @@ class DeviceControlActivity: AppCompatActivity(), OnMapReadyCallback {
                         CoroutineScope(Dispatchers.IO).launch {
                             val registeredAE = db.registeredAEDAO().get(deviceAEName)
                             Log.d(TAG, "RegisteredAE: ${registeredAE!!.isLocked}")
-                            registeredAE!!.isLocked = pxml.GetElementXml(msg, "con") != "0"
+                            registeredAE.isLocked = pxml.GetElementXml(msg, "con") != "0"
+                            binding.lockSwitch.text = if(registeredAE.isLocked) "Locked" else "Unlocked"
                             db.registeredAEDAO().update(registeredAE)
                         }
                     }
@@ -123,11 +124,17 @@ class DeviceControlActivity: AppCompatActivity(), OnMapReadyCallback {
             })
             req.start()
         }
+        mutableLiveData.observe(this){ location ->
+            binding.mapView.getMapAsync {
+                it.addMarker(MarkerOptions().position(LatLng(location.first, location.second)).title("Current Location"))
+            }
+        }
 
         CoroutineScope(Dispatchers.IO + job).launch{
             getDeviceStatus()
             while(true){
                 getAnomalyDetection()
+                getGPSLocation()
                 delay(10000)
             }
         }
@@ -236,10 +243,10 @@ class DeviceControlActivity: AppCompatActivity(), OnMapReadyCallback {
             // Update Database
             registeredAE!!.isLedTurnedOn = isLedOn
             registeredAE.isLocked = isLocked
+            binding.lockSwitch.text = if(isLocked) "Locked" else "Unlocked"
             db.registeredAEDAO().update(registeredAE)
         }
     }
-
     // Retrieve Anomaly Detection State
     private suspend fun getAnomalyDetection() = coroutineScope {
         val data = async { db.registeredAEDAO().get(deviceAEName) }
@@ -257,15 +264,17 @@ class DeviceControlActivity: AppCompatActivity(), OnMapReadyCallback {
             }
         }
     }
-
     // Retrieve GPS Location of device
     private suspend fun getGPSLocation() = coroutineScope{
-        val reqLocation = RetrieveRequest(deviceAEName+"_loc", "DATA")
+        val reqLocation = RetrieveRequest(deviceAEName+"_curloc", "DATA")
         reqLocation.setReceiver(object : IReceived {
             override fun getResponseBody(msg: String) {
                 handler.execute{
                     val pxml = ParseElementXml()
-                    //TODO: Get location data and invalidate map location info.
+                    val location = pxml.GetElementXml(msg, "con").split(",")
+                    val latitude = location[0].removePrefix("\"latitude\":").toDouble()
+                    val longitude = location[1].removePrefix("\"longitude\":").toDouble()
+                    mutableLiveData.postValue(Pair(latitude, longitude))
                 }
             }
         })
