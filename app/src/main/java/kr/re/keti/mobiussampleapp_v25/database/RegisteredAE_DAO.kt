@@ -19,7 +19,7 @@ interface RegisteredAE_DAO {
     suspend fun delete(registeredAE: RegisteredAE)
 
     @Query("SELECT * FROM RegisteredAE WHERE applicationName = :applicationName")
-    suspend fun get(applicationName: String) : RegisteredAE
+    suspend fun get(applicationName: String) : RegisteredAE?
 
     @Query("SELECT * FROM RegisteredAE")
     suspend fun getAll() : List<RegisteredAE>

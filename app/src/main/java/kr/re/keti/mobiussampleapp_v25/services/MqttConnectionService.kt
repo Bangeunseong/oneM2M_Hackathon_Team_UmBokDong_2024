@@ -57,17 +57,15 @@ class MqttConnectionService: Service() {
             .build()
         startForeground(1, notification)
         Log.d(TAG, "MQTT Connection Created")
-        return START_STICKY
+        return START_STICKY_COMPATIBILITY
     }
 
     override fun onDestroy() {
         super.onDestroy()
         Log.d(TAG, "MQTT Connection Destroyed")
-        if(App.isConnected){
-            createMQTT(false, mqttReqTopic!!, mqttRespTopic!!)
-            stopForeground(STOP_FOREGROUND_REMOVE)
-            stopSelf()
-        }
+        createMQTT(false, mqttReqTopic!!, mqttRespTopic!!)
+        stopForeground(STOP_FOREGROUND_REMOVE)
+        stopSelf()
     }
 
     override fun onBind(p0: Intent?): IBinder? {
@@ -89,7 +87,6 @@ class MqttConnectionService: Service() {
                     Log.d(TAG, "connectionLost")
                     Toast.makeText(applicationContext, "Connection lost to MQTT Server", Toast.LENGTH_SHORT).show()
                     App.isConnected = false
-                    mqttClient!!.reconnect()
                 }
                 override fun messageArrived(topic: String?, message: MqttMessage?) {
                     Log.d(TAG, "messageArrived")
@@ -100,7 +97,7 @@ class MqttConnectionService: Service() {
                         if(message != null) {
                             valueSet = parseMqttMessage(message)
                             val registeredAE = db.registeredAEDAO().get(valueSet!!.first)
-                            registeredAE.isTriggered = valueSet!!.second
+                            registeredAE!!.isTriggered = valueSet!!.second
                             db.registeredAEDAO().update(registeredAE)
                         }
                     }.invokeOnCompletion {
@@ -169,7 +166,6 @@ class MqttConnectionService: Service() {
         } else {
             try {
                 if (mqttClient != null && mqttClient!!.isConnected) {
-                    App.isConnected = false
                     mqttClient!!.disconnect()
                 }
             } catch (e: MqttException) {

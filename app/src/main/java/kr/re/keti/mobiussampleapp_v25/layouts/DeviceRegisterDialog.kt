@@ -4,7 +4,13 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Toast
 import androidx.fragment.app.DialogFragment
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kr.re.keti.mobiussampleapp_v25.database.RegisteredAE
+import kr.re.keti.mobiussampleapp_v25.database.RegisteredAEDatabase
 import kr.re.keti.mobiussampleapp_v25.databinding.ActivityAddFormatBinding
 import kr.re.keti.mobiussampleapp_v25.layouts.MainActivity.Companion.ae
 import kr.re.keti.mobiussampleapp_v25.layouts.MainActivity.Companion.csebase
@@ -21,6 +27,13 @@ class DeviceRegisterDialog(private val listener: DeviceAddListener) : DialogFrag
     private var _binding: ActivityAddFormatBinding? = null
     private val binding get() = _binding!!
     private var reqServiceAE: RetrieveRequest? = null
+    private lateinit var db: RegisteredAEDatabase
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+
+        db = RegisteredAEDatabase.getInstance(requireContext())
+    }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         _binding = ActivityAddFormatBinding.inflate(inflater, container,false)
@@ -33,14 +46,21 @@ class DeviceRegisterDialog(private val listener: DeviceAddListener) : DialogFrag
 
         binding.btnRegister.setOnClickListener {
             val serviceAE = binding.inputServiceAeName.text.toString()
-            reqServiceAE = RetrieveRequest(serviceAE, "DATA")
-            reqServiceAE!!.setReceiver(object : IReceived {
-                override fun getResponseBody(msg: String) {
-                    listener.setDeviceName(binding.inputServiceAeName.text.toString())
-                    dismiss()
-                }
-            })
-            reqServiceAE!!.start()
+            var device: RegisteredAE? = null
+            CoroutineScope(Dispatchers.IO).launch {
+                device = db.registeredAEDAO().get(serviceAE)
+            }.invokeOnCompletion {
+                if(device == null){
+                    reqServiceAE = RetrieveRequest(serviceAE, "DATA")
+                    reqServiceAE!!.setReceiver(object : IReceived {
+                        override fun getResponseBody(msg: String) {
+                            listener.setDeviceName(binding.inputServiceAeName.text.toString())
+                            dismiss()
+                        }
+                    })
+                    reqServiceAE!!.start()
+                } else Toast.makeText(context, "$serviceAE is already registered", Toast.LENGTH_SHORT).show()
+            }
         }
 
         binding.btnCancel.setOnClickListener {
@@ -57,6 +77,8 @@ class DeviceRegisterDialog(private val listener: DeviceAddListener) : DialogFrag
         private var receiver: IReceived? = null
         private var ContainerName = "cnt-co2"
         private var serviceAEName = ""
+
+        var responseCode = 0
 
         constructor(serviceAEName: String, containerName: String) {
             this.ContainerName = containerName
@@ -87,17 +109,22 @@ class DeviceRegisterDialog(private val listener: DeviceAddListener) : DialogFrag
                 conn.setRequestProperty("nmtype", "long")
                 conn.connect()
 
-                var strResp = ""
-                val `in` = BufferedReader(InputStreamReader(conn.inputStream))
+                responseCode = conn.responseCode
 
-                var strLine = ""
-                while ((`in`.readLine().also { strLine = it }) != null) {
-                    strResp += strLine
-                }
+                var `in`: BufferedReader? = null
+                if(responseCode == 200){
+                    var strResp = ""
+                    `in` = BufferedReader(InputStreamReader(conn.inputStream))
 
-                if (strResp !== "") {
-                    receiver!!.getResponseBody(strResp)
-                }
+                    var strLine = ""
+                    while ((`in`.readLine().also { strLine = it }) != null) {
+                        strResp += strLine
+                    }
+
+                    if (strResp !== "") {
+                        receiver!!.getResponseBody(strResp)
+                    }
+                } else Toast.makeText(context, "Can't find $serviceAEName, please check it is registered first", Toast.LENGTH_SHORT).show()
                 conn.disconnect()
             } catch (exp: Exception) {
                 LOG.log(Level.WARNING, exp.message)

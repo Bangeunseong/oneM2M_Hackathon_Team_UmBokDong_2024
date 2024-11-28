@@ -82,7 +82,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    //TODO: Unsubscribe Specified Device
     private val deleteDeviceLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()){ result ->
         if(result.resultCode == RESULT_OK){
             val bundle = result.data?.extras ?: return@registerForActivityResult
@@ -263,8 +262,11 @@ class MainActivity : AppCompatActivity() {
     private suspend fun setDeviceStatus(serviceAE: String) = coroutineScope {
         val reqLed = RetrieveRequest("DATA", serviceAE+"_led")
         val reqPres = RetrieveRequest("DATA", serviceAE+"_pres")
-        val reqLock = RetrieveRequest("DATA", serviceAE+"_lock")
+        val reqLock = RetrieveRequest("DATA", serviceAE+"_loc")
         val reqSub = CreateSubscribeResource("DATA", serviceAE+"_pres")
+        val getSub = GetSubscribeResource("DATA", serviceAE+"_pres")
+        val reqModifySub = ModifySubscribeResource("DATA", serviceAE+"_pres")
+
         val registeredAE = RegisteredAE(serviceAE,false,false,false,true)
         reqLed.setReceiver(object : IReceived {
             override fun getResponseBody(msg: String) {
@@ -295,7 +297,15 @@ class MainActivity : AppCompatActivity() {
         val ledData = async { reqLed.start(); reqLed.join() }
         val presData = async { reqPres.start(); reqPres.join() }
         val lockData = async { reqLock.start(); reqLock.join() }
-        val subData = async { reqSub.start(); reqSub.join() }
+        val subData = async {
+            getSub.start(); getSub.join()
+            if(notificationURIs.isEmpty()){
+                reqSub.start(); reqSub.join()
+            }
+            else {
+                reqModifySub.start(); reqModifySub.join()
+            }
+        }
 
         withContext(Dispatchers.Main) {
             ledData.await()
@@ -324,17 +334,32 @@ class MainActivity : AppCompatActivity() {
                 subscribeResource.setReceiver(object : IReceived{
                     override fun getResponseBody(msg: String) {
                         if(msg.toInt() == 200){
-                            val modifySubscribeResource = ModifySubscribeResource("DATA", device.applicationName+"_pres")
-                            modifySubscribeResource.setReceiver(object : IReceived{
-                                override fun getResponseBody(msg: String) {
-                                    Log.d(TAG, "$msg")
-                                }
-                            })
-                            modifySubscribeResource.start()
+                            if(notificationURIs.contains("mqtt://${csebase.host}/${ae.aEid + "_sub"}"))
+                                notificationURIs.remove("mqtt://${csebase.host}/${ae.aEid + "_sub"}")
+                            if(notificationURIs.isEmpty()){
+                                val deleteSubscribeResource = DeleteSubscribeResource("DATA", device.applicationName+"_pres")
+                                deleteSubscribeResource.setReceiver(object : IReceived{
+                                    override fun getResponseBody(msg: String) {
+                                        Log.d(TAG, "$msg")
+                                    }
+                                })
+                                deleteSubscribeResource.start()
+                                deleteSubscribeResource.join()
+                            } else{
+                                val modifySubscribeResource = ModifySubscribeResource("DATA", device.applicationName+"_pres")
+                                modifySubscribeResource.setReceiver(object : IReceived {
+                                    override fun getResponseBody(msg: String) {
+                                        Log.d(TAG, "$msg")
+                                    }
+                                })
+                                modifySubscribeResource.start()
+                                modifySubscribeResource.join()
+                            }
                         }
                     }
                 })
                 subscribeResource.start()
+                subscribeResource.join()
             }
             values
         }
@@ -667,6 +692,7 @@ class MainActivity : AppCompatActivity() {
                 conn.connect()
 
                 responseCode = conn.responseCode
+                notificationURIs.clear()
 
                 var `in`: BufferedReader? = null
                 if (responseCode == 200) {
@@ -680,7 +706,6 @@ class MainActivity : AppCompatActivity() {
                     }
 
                     val pxml = ParseElementXml()
-                    notificationURIs.clear()
                     notificationURIs.addAll(pxml.GetElementXml(resp, "nu").split(","))
                     Log.d(TAG, "${pxml.GetElementXml(resp, "nu").split(",")}")
                     `in`.close()
@@ -731,8 +756,7 @@ class MainActivity : AppCompatActivity() {
                 conn.setRequestProperty("Content-Type", "application/vnd.onem2m-res+xml; ty=23")
                 conn.setRequestProperty("locale", "ko")
 
-                val reqmqttContent =
-                    subscribeInstance.makeXML(notificationURIs)
+                val reqmqttContent = subscribeInstance.makeXML(notificationURIs)
                 conn.setRequestProperty("Content-Length", reqmqttContent.length.toString())
 
                 val dos = DataOutputStream(conn.outputStream)
@@ -752,6 +776,59 @@ class MainActivity : AppCompatActivity() {
                 }
                 conn.disconnect()
             } catch (exp: Exception) {
+                LOG.log(Level.SEVERE, exp.message)
+            }
+        }
+    }
+    /* Delete Subscribe Content Resource */
+    internal inner class DeleteSubscribeResource(private val containerName: String, private val serviceAEName: String) : Thread() {
+        private val LOG: Logger = Logger.getLogger(
+            DeleteSubscribeResource::class.java.name
+        )
+        private var receiver: IReceived? = null
+        var responseCode = 0
+
+        fun setReceiver(hanlder: IReceived?) {
+            this.receiver = hanlder
+        }
+
+        override fun run(){
+            try{
+                val sb = csebase.serviceUrl + "/" + serviceAEName + "/" + containerName + "/" + ae.aEid + "_rn"
+                val mUrl = URL(sb)
+                val conn = mUrl.openConnection() as HttpURLConnection
+
+                conn.requestMethod = "DELETE"
+                conn.doInput = true
+                conn.doOutput = false
+
+                conn.setRequestProperty("Accept", "application/xml")
+                conn.setRequestProperty("X-M2M-RI", "12345")
+                conn.setRequestProperty("X-M2M-Origin", ae.aEid)
+                conn.setRequestProperty("nmtype", "short")
+                conn.connect()
+
+                responseCode = conn.responseCode
+
+                var `in`: BufferedReader? = null
+                if (responseCode == 200) {
+                    // Get AEID from Response Data
+                    `in` = BufferedReader(InputStreamReader(conn.inputStream))
+
+                    var resp = ""
+                    var strLine: String
+                    while ((`in`.readLine().also { strLine = it }) != null) {
+                        resp += strLine
+                    }
+
+                    Log.d(TAG, "$resp")
+                    `in`.close()
+                }
+                if (responseCode != 0) {
+                    receiver!!.getResponseBody(responseCode.toString())
+                }
+                conn.disconnect()
+            } catch (exp: Exception){
                 LOG.log(Level.SEVERE, exp.message)
             }
         }

@@ -3,8 +3,6 @@ package kr.re.keti.mobiussampleapp_v25.layouts
 import android.animation.ObjectAnimator
 import android.content.res.Resources
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
 import android.util.Log
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
@@ -14,46 +12,27 @@ import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.MarkerOptions
-import info.mqtt.android.service.MqttAndroidClient
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kr.re.keti.mobiussampleapp_v25.App
 import kr.re.keti.mobiussampleapp_v25.R
 import kr.re.keti.mobiussampleapp_v25.data.ContentInstanceObject
-import kr.re.keti.mobiussampleapp_v25.data.ContentSubscribeObject
-import kr.re.keti.mobiussampleapp_v25.database.RegisteredAE
 import kr.re.keti.mobiussampleapp_v25.database.RegisteredAEDatabase
 import kr.re.keti.mobiussampleapp_v25.databinding.ActivityDeviceControlBinding
 import kr.re.keti.mobiussampleapp_v25.layouts.MainActivity.Companion.ae
 import kr.re.keti.mobiussampleapp_v25.layouts.MainActivity.Companion.csebase
 import kr.re.keti.mobiussampleapp_v25.layouts.MainActivity.IReceived
-import kr.re.keti.mobiussampleapp_v25.utils.MqttClientRequest
-import kr.re.keti.mobiussampleapp_v25.utils.MqttClientRequestParser
 import kr.re.keti.mobiussampleapp_v25.utils.ParseElementXml
-import org.eclipse.paho.client.mqttv3.IMqttActionListener
-import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken
-import org.eclipse.paho.client.mqttv3.IMqttToken
-import org.eclipse.paho.client.mqttv3.MqttCallback
-import org.eclipse.paho.client.mqttv3.MqttClient
-import org.eclipse.paho.client.mqttv3.MqttConnectOptions
-import org.eclipse.paho.client.mqttv3.MqttException
-import org.eclipse.paho.client.mqttv3.MqttMessage
-import org.json.JSONObject
 import java.io.BufferedReader
 import java.io.DataOutputStream
 import java.io.InputStreamReader
-import java.lang.Thread.sleep
 import java.net.HttpURLConnection
 import java.net.URL
-import java.util.concurrent.Executor
 import java.util.concurrent.Executors
 import java.util.logging.Level
 import java.util.logging.Logger
@@ -117,8 +96,8 @@ class DeviceControlActivity: AppCompatActivity(), OnMapReadyCallback {
                         val pxml = ParseElementXml()
                         CoroutineScope(Dispatchers.IO).launch {
                             val registeredAE = db.registeredAEDAO().get(deviceAEName)
-                            Log.d(TAG, "RegisteredAE: ${registeredAE.isLedTurnedOn}")
-                            registeredAE.isLedTurnedOn = pxml.GetElementXml(msg, "con") != "0"
+                            Log.d(TAG, "RegisteredAE: ${registeredAE!!.isLedTurnedOn}")
+                            registeredAE!!.isLedTurnedOn = pxml.GetElementXml(msg, "con") != "0"
                             db.registeredAEDAO().update(registeredAE)
                         }
                     }
@@ -127,7 +106,7 @@ class DeviceControlActivity: AppCompatActivity(), OnMapReadyCallback {
             req.start()
         }
         binding.lockSwitch.setOnCheckedChangeListener { _, isChecked ->
-            val req = ControlRequest(deviceAEName+"_lock", "DATA", if (isChecked) "1" else "0")
+            val req = ControlRequest(deviceAEName+"_loc", "DATA", if (isChecked) "1" else "0")
             req.setReceiver(object : IReceived {
                 override fun getResponseBody(msg: String) {
                     handler.execute {
@@ -135,8 +114,8 @@ class DeviceControlActivity: AppCompatActivity(), OnMapReadyCallback {
                         val pxml = ParseElementXml()
                         CoroutineScope(Dispatchers.IO).launch {
                             val registeredAE = db.registeredAEDAO().get(deviceAEName)
-                            Log.d(TAG, "RegisteredAE: ${registeredAE.isLocked}")
-                            registeredAE.isLocked = pxml.GetElementXml(msg, "con") != "0"
+                            Log.d(TAG, "RegisteredAE: ${registeredAE!!.isLocked}")
+                            registeredAE!!.isLocked = pxml.GetElementXml(msg, "con") != "0"
                             db.registeredAEDAO().update(registeredAE)
                         }
                     }
@@ -232,7 +211,7 @@ class DeviceControlActivity: AppCompatActivity(), OnMapReadyCallback {
             reqLed.start(); reqLed.join()
         }
         val lock = async {
-            val reqLock = RetrieveRequest(deviceAEName+"_lock", "DATA")
+            val reqLock = RetrieveRequest(deviceAEName+"_loc", "DATA")
             reqLock.setReceiver(object : IReceived {
                 override fun getResponseBody(msg: String) {
                     handler.execute {
@@ -255,7 +234,7 @@ class DeviceControlActivity: AppCompatActivity(), OnMapReadyCallback {
             binding.textView2.text = if(isLocked) "Locked" else "Unlocked"
 
             // Update Database
-            registeredAE.isLedTurnedOn = isLedOn
+            registeredAE!!.isLedTurnedOn = isLedOn
             registeredAE.isLocked = isLocked
             db.registeredAEDAO().update(registeredAE)
         }
@@ -267,7 +246,7 @@ class DeviceControlActivity: AppCompatActivity(), OnMapReadyCallback {
 
         withContext(Dispatchers.Main) {
             val registeredAE = data.await()
-            Log.d(TAG, "Got Information from Database: ${registeredAE.applicationName} -> ${registeredAE.isTriggered}")
+            Log.d(TAG, "Got Information from Database: ${registeredAE!!.applicationName} -> ${registeredAE.isTriggered}")
 
             if(registeredAE.isTriggered) {
                 binding.imageView3.setImageResource(R.drawable.icon_warning)

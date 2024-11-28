@@ -50,8 +50,7 @@ class ContentSubscribeObject {
         var xml = ""
         xml += "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
         xml += "<m2m:sub "
-        xml += "xmlns:m2m=\"http://www.onem2m.org/xml/protocols\" "
-        xml += "xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" rn=\"$resource_name\">"
+        xml += "xmlns:m2m=\"http://www.onem2m.org/xml/protocols\">"
         xml += "<enc>"
         xml += "<net>3 4</net>"
         xml += "</enc>"
@@ -62,7 +61,6 @@ class ContentSubscribeObject {
         }
         xml += "</nu>"
         xml += "<nct>2</nct>"
-        xml += "<cr>$origin_id</cr>"
         xml += "</m2m:sub>"
         return xml
     }
