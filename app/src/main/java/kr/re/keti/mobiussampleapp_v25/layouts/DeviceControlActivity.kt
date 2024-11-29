@@ -3,6 +3,8 @@ package kr.re.keti.mobiussampleapp_v25.layouts
 import android.animation.ObjectAnimator
 import android.content.res.Resources
 import android.os.Bundle
+import android.os.Looper
+import android.os.Handler
 import android.util.Log
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
@@ -33,7 +35,6 @@ import java.io.DataOutputStream
 import java.io.InputStreamReader
 import java.net.HttpURLConnection
 import java.net.URL
-import java.util.concurrent.Executors
 import java.util.logging.Level
 import java.util.logging.Logger
 
@@ -44,7 +45,7 @@ class DeviceControlActivity: AppCompatActivity(), OnMapReadyCallback {
 
     private var MQTT_Req_Topic = ""
     private var MQTT_Resp_Topic = ""
-    private var handler = Executors.newSingleThreadExecutor()
+    private var handler = Handler(Looper.myLooper()!!)
     private var isOpened = false
     private val job = Job()
 
@@ -74,14 +75,14 @@ class DeviceControlActivity: AppCompatActivity(), OnMapReadyCallback {
             isOpened = !isOpened
             if(!isOpened) {
                 binding.imageButton.setImageResource(R.drawable.ic_arrow_up)
-                ObjectAnimator.ofFloat(binding.deviceControlLayout, "translationY", (298f * Resources.getSystem().displayMetrics.density + 0.5f)).apply {
+                ObjectAnimator.ofFloat(binding.deviceControlLayout, "translationY", (346f * Resources.getSystem().displayMetrics.density + 0.5f)).apply {
                     duration = 1000
                     start()
                 }
             }
             else {
                 binding.imageButton.setImageResource(R.drawable.ic_arrow_down)
-                ObjectAnimator.ofFloat(binding.deviceControlLayout, "translationY", (10f * Resources.getSystem().displayMetrics.density + 0.5f)).apply {
+                ObjectAnimator.ofFloat(binding.deviceControlLayout, "translationY", (0f * Resources.getSystem().displayMetrics.density + 0.5f)).apply {
                     duration = 1000
                     start()
                 }
@@ -91,15 +92,13 @@ class DeviceControlActivity: AppCompatActivity(), OnMapReadyCallback {
             val req = ControlRequest(deviceAEName+"_led", "DATA", if (isChecked) "1" else "0")
             req.setReceiver(object : IReceived {
                 override fun getResponseBody(msg: String) {
-                    handler.execute {
-                        Log.d(TAG, "************** LED Light Control *************\r\n\r\n$msg")
-                        val pxml = ParseElementXml()
-                        CoroutineScope(Dispatchers.IO).launch {
-                            val registeredAE = db.registeredAEDAO().get(deviceAEName)
-                            Log.d(TAG, "RegisteredAE: ${registeredAE!!.isLedTurnedOn}")
-                            registeredAE.isLedTurnedOn = pxml.GetElementXml(msg, "con") != "0"
-                            db.registeredAEDAO().update(registeredAE)
-                        }
+                    Log.d(TAG, "************** LED Light Control *************\r\n\r\n$msg")
+                    val pxml = ParseElementXml()
+                    CoroutineScope(Dispatchers.IO).launch {
+                        val registeredAE = db.registeredAEDAO().get(deviceAEName)
+                        Log.d(TAG, "RegisteredAE: ${registeredAE!!.isLedTurnedOn}")
+                        registeredAE.isLedTurnedOn = pxml.GetElementXml(msg, "con") != "0"
+                        db.registeredAEDAO().update(registeredAE)
                     }
                 }
             })
@@ -109,16 +108,30 @@ class DeviceControlActivity: AppCompatActivity(), OnMapReadyCallback {
             val req = ControlRequest(deviceAEName+"_loc", "DATA", if (isChecked) "1" else "0")
             req.setReceiver(object : IReceived {
                 override fun getResponseBody(msg: String) {
-                    handler.execute {
-                        Log.d(TAG, "************** Lock Control *************\r\n\r\n$msg")
-                        val pxml = ParseElementXml()
-                        CoroutineScope(Dispatchers.IO).launch {
-                            val registeredAE = db.registeredAEDAO().get(deviceAEName)
-                            Log.d(TAG, "RegisteredAE: ${registeredAE!!.isLocked}")
-                            registeredAE.isLocked = pxml.GetElementXml(msg, "con") != "0"
-                            binding.lockSwitch.text = if(registeredAE.isLocked) "Locked" else "Unlocked"
-                            db.registeredAEDAO().update(registeredAE)
-                        }
+                    Log.d(TAG, "************** Lock Control *************\r\n\r\n$msg")
+                    val pxml = ParseElementXml()
+                    CoroutineScope(Dispatchers.IO).launch {
+                        val registeredAE = db.registeredAEDAO().get(deviceAEName)
+                        Log.d(TAG, "RegisteredAE: ${registeredAE!!.isLocked}")
+                        registeredAE.isLocked = pxml.GetElementXml(msg, "con") != "0"
+                        binding.lockSwitch.text = if(registeredAE.isLocked) "Locked" else "Unlocked"
+                        db.registeredAEDAO().update(registeredAE)
+                    }
+                }
+            })
+            req.start()
+        }
+        binding.buzSwitch.setOnCheckedChangeListener { _, isChecked ->
+            val req = ControlRequest(deviceAEName+"_buz", "DATA", if (isChecked) "1" else "0")
+            req.setReceiver(object : IReceived {
+                override fun getResponseBody(msg: String) {
+                    Log.d(TAG, "************** Buzzer Control *************\r\n\r\n$msg")
+                    val pxml = ParseElementXml()
+                    CoroutineScope(Dispatchers.IO).launch {
+                        val registeredAE = db.registeredAEDAO().get(deviceAEName)
+                        Log.d(TAG, "RegisteredAE: ${registeredAE!!.isBuzTurnedOn}")
+                        registeredAE.isBuzTurnedOn = pxml.GetElementXml(msg, "con") != "0"
+                        db.registeredAEDAO().update(registeredAE)
                     }
                 }
             })
@@ -126,6 +139,7 @@ class DeviceControlActivity: AppCompatActivity(), OnMapReadyCallback {
         }
         mutableLiveData.observe(this){ location ->
             binding.mapView.getMapAsync {
+                //TODO: Change Map behavior -> use location source to show where the device is.
                 it.addMarker(MarkerOptions().position(LatLng(location.first, location.second)).title("Current Location"))
             }
         }
@@ -203,46 +217,58 @@ class DeviceControlActivity: AppCompatActivity(), OnMapReadyCallback {
     // Retrieve Actuators status
     private suspend fun getDeviceStatus() = coroutineScope {
         val pxml = ParseElementXml()
-        var isLedOn = false
-        var isLocked = false
         val data = async { db.registeredAEDAO().get(deviceAEName) }
         val led = async {
+            var isLedOn = false
             val reqLed = RetrieveRequest(deviceAEName+"_led", "DATA")
             reqLed.setReceiver(object : IReceived {
                 override fun getResponseBody(msg: String) {
-                    handler.execute {
-                        isLedOn = pxml.GetElementXml(msg, "con") != "0"
-                    }
+                    isLedOn = pxml.GetElementXml(msg, "con") != "0"
                 }
             })
             reqLed.start(); reqLed.join()
+            isLedOn
+        }
+        val buz = async {
+            var isBuzTurnedOn = false
+            val reqBuz = RetrieveRequest(deviceAEName+"_buz", "DATA")
+            reqBuz.setReceiver(object : IReceived {
+                override fun getResponseBody(msg: String) {
+                    isBuzTurnedOn = pxml.GetElementXml(msg, "con") != "0"
+                }
+            })
+            reqBuz.start(); reqBuz.join()
+            isBuzTurnedOn
         }
         val lock = async {
+            var isLocked = false
             val reqLock = RetrieveRequest(deviceAEName+"_loc", "DATA")
             reqLock.setReceiver(object : IReceived {
                 override fun getResponseBody(msg: String) {
-                    handler.execute {
-                        isLocked = pxml.GetElementXml(msg, "con") != "0"
-                    }
+                    isLocked = pxml.GetElementXml(msg, "con") != "0"
                 }
             })
             reqLock.start(); reqLock.join()
+            isLocked
         }
 
         withContext(Dispatchers.Main){
             // Asynchronous Data Retrieval Process
             val registeredAE = data.await()
-            led.await()
-            lock.await()
+            val isLedOn = led.await()
+            val isBuzTurnedOn = buz.await()
+            val isLocked = lock.await()
 
             // Change UI
             binding.ledSwitch.isChecked = isLedOn
+            binding.buzSwitch.isChecked = isBuzTurnedOn
             binding.lockSwitch.isChecked = isLocked
             binding.textView2.text = if(isLocked) "Locked" else "Unlocked"
 
             // Update Database
             registeredAE!!.isLedTurnedOn = isLedOn
             registeredAE.isLocked = isLocked
+            registeredAE.isBuzTurnedOn = isBuzTurnedOn
             binding.lockSwitch.text = if(isLocked) "Locked" else "Unlocked"
             db.registeredAEDAO().update(registeredAE)
         }
@@ -269,7 +295,7 @@ class DeviceControlActivity: AppCompatActivity(), OnMapReadyCallback {
         val reqLocation = RetrieveRequest(deviceAEName+"_curloc", "DATA")
         reqLocation.setReceiver(object : IReceived {
             override fun getResponseBody(msg: String) {
-                handler.execute{
+                handler.post {
                     val pxml = ParseElementXml()
                     val location = pxml.GetElementXml(msg, "con").split(",")
                     val latitude = location[0].removePrefix("\"latitude\":").toDouble()

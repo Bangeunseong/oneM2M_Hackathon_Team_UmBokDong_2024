@@ -61,7 +61,7 @@ class MainActivity : AppCompatActivity() {
     private var handler: Handler = Handler(Looper.myLooper()!!)
 
     private val MQTTPort = "1883"
-    private val Mobius_Address = "192.168.55.35"
+    private val Mobius_Address = "172.16.78.111"
 
     private val viewModel: MainViewModel by viewModels()
 
@@ -71,7 +71,7 @@ class MainActivity : AppCompatActivity() {
             val serviceAEBundle = result.data ?: return@registerForActivityResult
             val serviceAE = serviceAEBundle.getStringExtra("SERVICE_AE") ?: return@registerForActivityResult
             CoroutineScope(Dispatchers.Default).launch {
-                setDeviceStatus(serviceAE)
+                addDevice(serviceAE)
             }.invokeOnCompletion {
                 if(it != null)
                     Log.d(TAG,"Registration Failed: ${it.cause}")
@@ -81,12 +81,11 @@ class MainActivity : AppCompatActivity() {
             Log.d(TAG, "Registration Canceled")
         }
     }
-
+    /* Device Deletion Activity Launcher */
     private val deleteDeviceLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()){ result ->
         if(result.resultCode == RESULT_OK){
             val bundle = result.data?.extras ?: return@registerForActivityResult
             val deleteList = bundle.getIntArray("DELETED_AE") ?: return@registerForActivityResult
-
             CoroutineScope(Dispatchers.Default).launch {
                 removeDevice(deleteList.toList())
             }.invokeOnCompletion {
@@ -258,16 +257,17 @@ class MainActivity : AppCompatActivity() {
             for(i in deviceList.indices){ viewModel.addServiceAE(i) }
         }
     }
-    /* Get Device Information from cloud server */
-    private suspend fun setDeviceStatus(serviceAE: String) = coroutineScope {
+    /* Register device */
+    private suspend fun addDevice(serviceAE: String) = coroutineScope {
         val reqLed = RetrieveRequest("DATA", serviceAE+"_led")
         val reqPres = RetrieveRequest("DATA", serviceAE+"_pres")
+        val reqBuz = RetrieveRequest("DATA", serviceAE+"_buz")
         val reqLock = RetrieveRequest("DATA", serviceAE+"_loc")
         val reqSub = CreateSubscribeResource("DATA", serviceAE+"_pres")
         val getSub = GetSubscribeResource("DATA", serviceAE+"_pres")
         val reqModifySub = ModifySubscribeResource("DATA", serviceAE+"_pres")
 
-        val registeredAE = RegisteredAE(serviceAE,false,false,false,true)
+        val registeredAE = RegisteredAE(serviceAE,false,false,false,false,true)
         reqLed.setReceiver(object : IReceived {
             override fun getResponseBody(msg: String) {
                 val pxml = ParseElementXml()
@@ -278,6 +278,12 @@ class MainActivity : AppCompatActivity() {
             override fun getResponseBody(msg: String) {
                 val pxml = ParseElementXml()
                 registeredAE.isTriggered = pxml.GetElementXml(msg, "con") != "0"
+            }
+        })
+        reqBuz.setReceiver(object : IReceived {
+            override fun getResponseBody(msg: String) {
+                val pxml = ParseElementXml()
+                registeredAE.isBuzTurnedOn = pxml.GetElementXml(msg, "con") != "0"
             }
         })
         reqLock.setReceiver(object : IReceived{
@@ -296,6 +302,7 @@ class MainActivity : AppCompatActivity() {
 
         val ledData = async { reqLed.start(); reqLed.join() }
         val presData = async { reqPres.start(); reqPres.join() }
+        val buzData = async { reqBuz.start(); reqBuz.join() }
         val lockData = async { reqLock.start(); reqLock.join() }
         val subData = async {
             getSub.start(); getSub.join()
@@ -310,10 +317,11 @@ class MainActivity : AppCompatActivity() {
         withContext(Dispatchers.Main) {
             ledData.await()
             presData.await()
+            buzData.await()
             lockData.await()
             subData.await()
 
-            Log.d(TAG,"RegisteredAE: ${registeredAE.isRegistered},${registeredAE.isTriggered},${registeredAE.isLedTurnedOn},${registeredAE.isLocked}")
+            Log.d(TAG,"RegisteredAE: ${registeredAE.isRegistered},${registeredAE.isTriggered},${registeredAE.isBuzTurnedOn},${registeredAE.isLedTurnedOn},${registeredAE.isLocked}")
             viewModel.getDeviceList().add(registeredAE)
             viewModel.addServiceAE(viewModel.getDeviceList().lastIndex)
             viewModel.database.registeredAEDAO().insert(registeredAE)

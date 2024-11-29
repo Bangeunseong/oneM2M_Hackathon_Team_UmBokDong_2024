@@ -11,11 +11,13 @@ data class RegisteredAE(
     var applicationName: String,
     var isTriggered: Boolean,
     var isLocked: Boolean,
+    var isBuzTurnedOn: Boolean,
     var isLedTurnedOn: Boolean,
     var isRegistered: Boolean
 ): Parcelable{
     constructor(parcel: Parcel) : this(
         parcel.readString().toString(),
+        parcel.readByte().toInt() != 0,
         parcel.readByte().toInt() != 0,
         parcel.readByte().toInt() != 0,
         parcel.readByte().toInt() != 0,
@@ -26,6 +28,7 @@ data class RegisteredAE(
         parcel.writeString(applicationName)
         parcel.writeByte(if (isTriggered) 1 else 0)
         parcel.writeByte(if (isLocked) 1 else 0)
+        parcel.writeByte(if (isBuzTurnedOn) 1 else 0)
         parcel.writeByte(if (isLedTurnedOn) 1 else 0)
         parcel.writeByte(if (isRegistered) 1 else 0)
     }

@@ -23,7 +23,7 @@
         android:orientation="vertical"
         android:layout_gravity="bottom"
         android:gravity="center_horizontal"
-        android:translationY="298dp">
+        android:translationY="346dp">
 
         <ImageButton
             android:id="@+id/imageButton"
@@ -56,6 +56,15 @@
                 android:text="Unlocked"
                 android:textSize="16sp"
                 app:layout_constraintTop_toBottomOf="@id/led_switch" />
+
+            <androidx.appcompat.widget.SwitchCompat
+                android:id="@+id/buz_switch"
+                android:layout_width="match_parent"
+                android:layout_height="50dp"
+                android:paddingHorizontal="10dp"
+                android:text="Buzzer"
+                android:textSize="16sp"
+                app:layout_constraintTop_toBottomOf="@id/lock_switch"/>
 
             <TextView
                 android:id="@+id/textView2"
