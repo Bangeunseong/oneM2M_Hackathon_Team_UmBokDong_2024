@@ -140,7 +140,7 @@ class DeviceControlActivity: AppCompatActivity(), OnMapReadyCallback {
         // When location resource arrived this function activates
         mutableLiveData.observe(this){ location ->
             binding.mapView.getMapAsync {
-                //TODO: Change Map behavior -> use location source to show where the device is.
+                //TODO: Change Map behavior -> use location source to show where the device is. or just use markers to show where and when the device detected anomaly.
                 it.addMarker(MarkerOptions().position(LatLng(location.first, location.second)).title("Current Location"))
             }
         }
