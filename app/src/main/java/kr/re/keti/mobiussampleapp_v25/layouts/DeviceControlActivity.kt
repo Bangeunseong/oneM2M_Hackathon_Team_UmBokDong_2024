@@ -137,6 +137,7 @@ class DeviceControlActivity: AppCompatActivity(), OnMapReadyCallback {
             })
             req.start()
         }
+        // When location resource arrived this function activates
         mutableLiveData.observe(this){ location ->
             binding.mapView.getMapAsync {
                 //TODO: Change Map behavior -> use location source to show where the device is.
@@ -292,7 +293,7 @@ class DeviceControlActivity: AppCompatActivity(), OnMapReadyCallback {
     }
     // Retrieve GPS Location of device
     private suspend fun getGPSLocation() = coroutineScope{
-        val reqLocation = RetrieveRequest(deviceAEName+"_curloc", "DATA")
+        val reqLocation = RetrieveRequest(deviceAEName+"_gps", "DATA")
         reqLocation.setReceiver(object : IReceived {
             override fun getResponseBody(msg: String) {
                 handler.post {

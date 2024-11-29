@@ -61,7 +61,7 @@ class MainActivity : AppCompatActivity() {
     private var handler: Handler = Handler(Looper.myLooper()!!)
 
     private val MQTTPort = "1883"
-    private val Mobius_Address = "172.16.78.111"
+    private val Mobius_Address = "192.168.55.35"
 
     private val viewModel: MainViewModel by viewModels()
 
