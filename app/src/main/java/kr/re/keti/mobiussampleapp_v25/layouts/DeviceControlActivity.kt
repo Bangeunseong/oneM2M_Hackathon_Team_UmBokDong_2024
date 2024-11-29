@@ -142,6 +142,7 @@ class DeviceControlActivity: AppCompatActivity(), OnMapReadyCallback {
             binding.mapView.getMapAsync {
                 //TODO: Change Map behavior -> use location source to show where the device is. or just use markers to show where and when the device detected anomaly.
                 it.addMarker(MarkerOptions().position(LatLng(location.first, location.second)).title("Current Location"))
+                it.moveCamera(CameraUpdateFactory.newLatLngZoom(LatLng(location.first, location.second), 15F))
             }
         }
 
@@ -211,8 +212,6 @@ class DeviceControlActivity: AppCompatActivity(), OnMapReadyCallback {
 
     override fun onMapReady(googleMap: GoogleMap) {
         googleMap.mapType = GoogleMap.MAP_TYPE_NORMAL
-        googleMap.addMarker(MarkerOptions().position(LatLng(37.654601, 127.060530)).title("Current Location"))
-        googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(LatLng(37.654601, 127.060530), 15F))
     }
 
     // Retrieve Actuators status
@@ -298,9 +297,8 @@ class DeviceControlActivity: AppCompatActivity(), OnMapReadyCallback {
             override fun getResponseBody(msg: String) {
                 handler.post {
                     val pxml = ParseElementXml()
-                    val location = pxml.GetElementXml(msg, "con").split(",")
-                    val latitude = location[0].removePrefix("\"latitude\":").toDouble()
-                    val longitude = location[1].removePrefix("\"longitude\":").toDouble()
+                    val latitude = pxml.GetElementXml(msg, "latitude").toDouble()
+                    val longitude = pxml.GetElementXml(msg, "longitude").toDouble()
                     mutableLiveData.postValue(Pair(latitude, longitude))
                 }
             }
