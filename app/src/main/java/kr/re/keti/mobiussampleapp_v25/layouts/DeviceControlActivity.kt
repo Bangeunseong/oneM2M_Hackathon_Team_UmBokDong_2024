@@ -48,7 +48,6 @@ class DeviceControlActivity: AppCompatActivity(), OnMapReadyCallback {
     private var _binding: ActivityDeviceControlBinding? = null
     private val binding get() = _binding!!
     private val mutableLocationData = MutableLiveData<Pair<Double, Double>>()
-    private val mutableAnomalyData = MutableLiveData<Boolean>()
 
     private var MQTT_Req_Topic = ""
     private var MQTT_Resp_Topic = ""
@@ -163,25 +162,6 @@ class DeviceControlActivity: AppCompatActivity(), OnMapReadyCallback {
                 )
             }
         }
-        // When anomaly detected this function activates
-        mutableAnomalyData.observe(this){ detected ->
-            binding.mapView.getMapAsync {
-                //TODO: Change Map behavior -> use location source to show where the device is. or just use markers to show where and when the device detected anomaly.
-                if(detected){
-                    val location = mutableLocationData.value
-                    val marker = MarkerOptions()
-                    if(location != null){
-                        marker.position(LatLng(location.first, location.second))
-                        marker.snippet("Location: ${String.format("%.3f",location.first)}, ${String.format("%.3f", location.second)}")
-                        marker.title("Anomaly Detected!")
-                        markers.add(marker)
-                        it.addMarker(marker)
-                    } else{
-                        Toast.makeText(this, "Anomaly is detected, but cannot find its location!",Toast.LENGTH_SHORT).show()
-                    }
-                }
-            }
-        }
 
         // For retrieving resource content from room database
         CoroutineScope(Dispatchers.IO + job).launch{
@@ -209,7 +189,6 @@ class DeviceControlActivity: AppCompatActivity(), OnMapReadyCallback {
                 }
             }
         }
-
         onBackPressedDispatcher.addCallback(this, callback)
     }
 
@@ -328,6 +307,20 @@ class DeviceControlActivity: AppCompatActivity(), OnMapReadyCallback {
             Log.d(TAG, "Got Information from Database: ${registeredAE!!.applicationName} -> ${registeredAE.isTriggered}")
 
             if(registeredAE.isTriggered) {
+                binding.mapView.getMapAsync {
+                    //TODO: Change Map behavior -> use location source to show where the device is. or just use markers to show where and when the device detected anomaly.
+                    val location = mutableLocationData.value
+                    val marker = MarkerOptions()
+                    if(location != null){
+                        marker.position(LatLng(location.first, location.second))
+                        marker.snippet("Location: ${String.format("%.3f",location.first)}, ${String.format("%.3f", location.second)}")
+                        marker.title("Anomaly Detected!")
+                        markers.add(marker)
+                        it.addMarker(marker)
+                    } else{
+                        Toast.makeText(this@DeviceControlActivity, "Anomaly is detected, but cannot find its location!",Toast.LENGTH_SHORT).show()
+                    }
+                }
                 binding.imageView3.setImageResource(R.drawable.icon_warning)
                 binding.textView2.text = "Anomaly Detected!"
             } else{
