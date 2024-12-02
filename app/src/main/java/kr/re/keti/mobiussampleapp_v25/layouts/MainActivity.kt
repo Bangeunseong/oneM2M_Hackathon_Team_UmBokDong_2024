@@ -1,6 +1,7 @@
 package kr.re.keti.mobiussampleapp_v25.layouts
 
 import android.Manifest
+import android.Manifest.permission.ACCESS_COARSE_LOCATION
 import android.Manifest.permission.ACCESS_FINE_LOCATION
 import android.Manifest.permission.FOREGROUND_SERVICE
 import android.Manifest.permission.INTERNET
@@ -61,7 +62,7 @@ class MainActivity : AppCompatActivity() {
     private var handler: Handler = Handler(Looper.myLooper()!!)
 
     private val MQTTPort = "1883"
-    private val Mobius_Address = "192.168.55.35"
+    private val Mobius_Address = "172.16.78.111"
 
     private val viewModel: MainViewModel by viewModels()
 
@@ -134,6 +135,7 @@ class MainActivity : AppCompatActivity() {
             checkSelfPermission(NOTIFICATION_SERVICE) == PackageManager.PERMISSION_DENIED ||
             checkSelfPermission(FOREGROUND_SERVICE) == PackageManager.PERMISSION_DENIED ||
             checkSelfPermission(ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_DENIED ||
+            checkSelfPermission(ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_DENIED ||
             checkSelfPermission(INTERNET) == PackageManager.PERMISSION_DENIED ||
             checkSelfPermission(POST_NOTIFICATIONS) == PackageManager.PERMISSION_DENIED){
             if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU){

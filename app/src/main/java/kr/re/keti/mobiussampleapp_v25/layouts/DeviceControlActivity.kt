@@ -1,17 +1,23 @@
 package kr.re.keti.mobiussampleapp_v25.layouts
 
+import android.Manifest
 import android.animation.ObjectAnimator
+import android.content.pm.PackageManager
 import android.content.res.Resources
+import android.location.Location
 import android.os.Bundle
-import android.os.Looper
-import android.os.Handler
 import android.util.Log
+import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
 import androidx.lifecycle.MutableLiveData
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
+import com.google.android.gms.maps.LocationSource
+import com.google.android.gms.maps.LocationSource.OnLocationChangedListener
 import com.google.android.gms.maps.OnMapReadyCallback
+import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.MarkerOptions
 import kotlinx.coroutines.CoroutineScope
@@ -41,13 +47,15 @@ import java.util.logging.Logger
 class DeviceControlActivity: AppCompatActivity(), OnMapReadyCallback {
     private var _binding: ActivityDeviceControlBinding? = null
     private val binding get() = _binding!!
-    private val mutableLiveData = MutableLiveData<Pair<Double, Double>>()
+    private val mutableLocationData = MutableLiveData<Pair<Double, Double>>()
+    private val mutableAnomalyData = MutableLiveData<Boolean>()
 
     private var MQTT_Req_Topic = ""
     private var MQTT_Resp_Topic = ""
-    private var handler = Handler(Looper.myLooper()!!)
     private var isOpened = false
     private val job = Job()
+    private val locationSource = DeviceLocationSource()
+    private val markers = mutableListOf<MarkerOptions>()
 
     private lateinit var deviceAEName: String
     private lateinit var db: RegisteredAEDatabase
@@ -138,20 +146,50 @@ class DeviceControlActivity: AppCompatActivity(), OnMapReadyCallback {
             req.start()
         }
         // When location resource arrived this function activates
-        mutableLiveData.observe(this){ location ->
+        mutableLocationData.observe(this) {
+            val location = it
+            locationSource.updateLocation(location)
+            binding.mapView.getMapAsync { googleMap ->
+                val cameraPosition = googleMap.cameraPosition
+                googleMap.animateCamera(
+                    CameraUpdateFactory.newCameraPosition(
+                        CameraPosition(
+                            LatLng(location.first, location.second),
+                            cameraPosition.zoom,
+                            cameraPosition.tilt,
+                            cameraPosition.bearing
+                        )
+                    )
+                )
+            }
+        }
+        // When anomaly detected this function activates
+        mutableAnomalyData.observe(this){ detected ->
             binding.mapView.getMapAsync {
                 //TODO: Change Map behavior -> use location source to show where the device is. or just use markers to show where and when the device detected anomaly.
-                it.addMarker(MarkerOptions().position(LatLng(location.first, location.second)).title("Current Location"))
-                it.moveCamera(CameraUpdateFactory.newLatLngZoom(LatLng(location.first, location.second), 15F))
+                if(detected){
+                    val location = mutableLocationData.value
+                    val marker = MarkerOptions()
+                    if(location != null){
+                        marker.position(LatLng(location.first, location.second))
+                        marker.snippet("Location: ${String.format("%.3f",location.first)}, ${String.format("%.3f", location.second)}")
+                        marker.title("Anomaly Detected!")
+                        markers.add(marker)
+                        it.addMarker(marker)
+                    } else{
+                        Toast.makeText(this, "Anomaly is detected, but cannot find its location!",Toast.LENGTH_SHORT).show()
+                    }
+                }
             }
         }
 
+        // For retrieving resource content from room database
         CoroutineScope(Dispatchers.IO + job).launch{
             getDeviceStatus()
             while(true){
                 getAnomalyDetection()
                 getGPSLocation()
-                delay(10000)
+                delay(8000)
             }
         }
         setContentView(binding.root)
@@ -212,6 +250,14 @@ class DeviceControlActivity: AppCompatActivity(), OnMapReadyCallback {
 
     override fun onMapReady(googleMap: GoogleMap) {
         googleMap.mapType = GoogleMap.MAP_TYPE_NORMAL
+        googleMap.setLocationSource(locationSource)
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+            != PackageManager.PERMISSION_GRANTED &&
+            ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION)
+            != PackageManager.PERMISSION_GRANTED) {
+            return
+        }
+        googleMap.isMyLocationEnabled = true
     }
 
     // Retrieve Actuators status
@@ -295,15 +341,34 @@ class DeviceControlActivity: AppCompatActivity(), OnMapReadyCallback {
         val reqLocation = RetrieveRequest(deviceAEName+"_gps", "DATA")
         reqLocation.setReceiver(object : IReceived {
             override fun getResponseBody(msg: String) {
-                handler.post {
-                    val pxml = ParseElementXml()
-                    val latitude = pxml.GetElementXml(msg, "latitude").toDouble()
-                    val longitude = pxml.GetElementXml(msg, "longitude").toDouble()
-                    mutableLiveData.postValue(Pair(latitude, longitude))
-                }
+                val pxml = ParseElementXml()
+                val latitude = pxml.GetElementXml(msg, "latitude").toDouble()
+                val longitude = pxml.GetElementXml(msg, "longitude").toDouble()
+                mutableLocationData.postValue(Pair(latitude, longitude))
             }
         })
         reqLocation.start()
+        // mutableLocationData.postValue(Pair(Math.random()+37, Math.random()+112))
+    }
+
+    internal inner class DeviceLocationSource: LocationSource{
+        private var listener: OnLocationChangedListener? = null
+
+        override fun activate(p0: OnLocationChangedListener) {
+            this.listener = p0
+        }
+
+        fun updateLocation(loc: Pair<Double, Double>){
+            val location = Location("Mobius")
+            location.latitude = loc.first
+            location.longitude = loc.second
+            location.accuracy = 100.0f
+            listener?.onLocationChanged(location)
+        }
+
+        override fun deactivate() {
+            listener = null
+        }
     }
 
     // --- Retrieve Actions ---
