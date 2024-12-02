@@ -113,7 +113,7 @@ class DeviceControlActivity: AppCompatActivity(), OnMapReadyCallback {
             req.start()
         }
         binding.lockSwitch.setOnCheckedChangeListener { _, isChecked ->
-            val req = ControlRequest(deviceAEName+"_loc", "DATA", if (isChecked) "1" else "0")
+            val req = ControlRequest(deviceAEName+"_lock", "DATA", if (isChecked) "1" else "0")
             req.setReceiver(object : IReceived {
                 override fun getResponseBody(msg: String) {
                     Log.d(TAG, "************** Lock Control *************\r\n\r\n$msg")
@@ -288,7 +288,7 @@ class DeviceControlActivity: AppCompatActivity(), OnMapReadyCallback {
         }
         val lock = async {
             var isLocked = false
-            val reqLock = RetrieveRequest(deviceAEName+"_loc", "DATA")
+            val reqLock = RetrieveRequest(deviceAEName+"_lock", "DATA")
             reqLock.setReceiver(object : IReceived {
                 override fun getResponseBody(msg: String) {
                     isLocked = pxml.GetElementXml(msg, "con") != "0"

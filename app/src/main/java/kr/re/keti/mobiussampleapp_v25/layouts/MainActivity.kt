@@ -264,7 +264,7 @@ class MainActivity : AppCompatActivity() {
         val reqLed = RetrieveRequest("DATA", serviceAE+"_led")
         val reqPres = RetrieveRequest("DATA", serviceAE+"_pres")
         val reqBuz = RetrieveRequest("DATA", serviceAE+"_buz")
-        val reqLock = RetrieveRequest("DATA", serviceAE+"_loc")
+        val reqLock = RetrieveRequest("DATA", serviceAE+"_lock")
         val reqSub = CreateSubscribeResource("DATA", serviceAE+"_pres")
         val getSub = GetSubscribeResource("DATA", serviceAE+"_pres")
         val reqModifySub = ModifySubscribeResource("DATA", serviceAE+"_pres")
