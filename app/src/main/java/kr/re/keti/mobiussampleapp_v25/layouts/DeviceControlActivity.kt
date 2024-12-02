@@ -154,7 +154,7 @@ class DeviceControlActivity: AppCompatActivity(), OnMapReadyCallback {
                     CameraUpdateFactory.newCameraPosition(
                         CameraPosition(
                             LatLng(location.first, location.second),
-                            cameraPosition.zoom,
+                            12f,
                             cameraPosition.tilt,
                             cameraPosition.bearing
                         )
@@ -308,7 +308,6 @@ class DeviceControlActivity: AppCompatActivity(), OnMapReadyCallback {
 
             if(registeredAE.isTriggered) {
                 binding.mapView.getMapAsync {
-                    //TODO: Change Map behavior -> use location source to show where the device is. or just use markers to show where and when the device detected anomaly.
                     val location = mutableLocationData.value
                     val marker = MarkerOptions()
                     if(location != null){
@@ -344,6 +343,7 @@ class DeviceControlActivity: AppCompatActivity(), OnMapReadyCallback {
         // mutableLocationData.postValue(Pair(Math.random()+37, Math.random()+112))
     }
 
+    /* Set Location Source of GoogleMap */
     internal inner class DeviceLocationSource: LocationSource{
         private var listener: OnLocationChangedListener? = null
 
@@ -355,7 +355,7 @@ class DeviceControlActivity: AppCompatActivity(), OnMapReadyCallback {
             val location = Location("Mobius")
             location.latitude = loc.first
             location.longitude = loc.second
-            location.accuracy = 100.0f
+            location.accuracy = 50.0f
             listener?.onLocationChanged(location)
         }
 
@@ -363,8 +363,6 @@ class DeviceControlActivity: AppCompatActivity(), OnMapReadyCallback {
             listener = null
         }
     }
-
-    // --- Retrieve Actions ---
     /* Retrieve Sensor Data */
     internal inner class RetrieveRequest : Thread {
         private val LOG: Logger = Logger.getLogger(
@@ -420,9 +418,6 @@ class DeviceControlActivity: AppCompatActivity(), OnMapReadyCallback {
             }
         }
     }
-    // -----------------------
-
-    // --- Control Actions ---
     /* Request Control LED */
     internal inner class ControlRequest(serviceAEName: String, containerName: String, comm: String) : Thread() {
         private val LOG: Logger = Logger.getLogger(
@@ -487,7 +482,6 @@ class DeviceControlActivity: AppCompatActivity(), OnMapReadyCallback {
             }
         }
     }
-    // ----------------------
 
     companion object{
         private const val TAG = "DEVICE_CONTROL_ACTIVITY"
