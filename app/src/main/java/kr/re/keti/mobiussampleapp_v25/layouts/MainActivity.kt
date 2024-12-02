@@ -1,11 +1,12 @@
 package kr.re.keti.mobiussampleapp_v25.layouts
 
-import android.Manifest
 import android.Manifest.permission.ACCESS_COARSE_LOCATION
 import android.Manifest.permission.ACCESS_FINE_LOCATION
 import android.Manifest.permission.FOREGROUND_SERVICE
 import android.Manifest.permission.INTERNET
 import android.Manifest.permission.POST_NOTIFICATIONS
+import android.Manifest.permission.SCHEDULE_EXACT_ALARM
+import android.Manifest.permission.USE_EXACT_ALARM
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
@@ -140,13 +141,13 @@ class MainActivity : AppCompatActivity() {
             checkSelfPermission(POST_NOTIFICATIONS) == PackageManager.PERMISSION_DENIED){
             if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU){
                 requestPermissions(arrayOf(
-                    Manifest.permission.POST_NOTIFICATIONS,
-                    Manifest.permission.INTERNET,
-                    Manifest.permission.FOREGROUND_SERVICE,
-                    Manifest.permission.ACCESS_FINE_LOCATION,
-                    Manifest.permission.ACCESS_COARSE_LOCATION,
-                    Manifest.permission.SCHEDULE_EXACT_ALARM,
-                    Manifest.permission.USE_EXACT_ALARM),101)
+                    POST_NOTIFICATIONS,
+                    INTERNET,
+                    FOREGROUND_SERVICE,
+                    ACCESS_FINE_LOCATION,
+                    ACCESS_COARSE_LOCATION,
+                    SCHEDULE_EXACT_ALARM,
+                    USE_EXACT_ALARM),101)
             }
         }
     }
@@ -269,7 +270,13 @@ class MainActivity : AppCompatActivity() {
         val getSub = GetSubscribeResource("DATA", serviceAE+"_pres")
         val reqModifySub = ModifySubscribeResource("DATA", serviceAE+"_pres")
 
-        val registeredAE = RegisteredAE(serviceAE,false,false,false,false,true)
+        val registeredAE = RegisteredAE(serviceAE,
+            isTriggered = false,
+            isLocked = false,
+            isBuzTurnedOn = false,
+            isLedTurnedOn = false,
+            isRegistered = true
+        )
         reqLed.setReceiver(object : IReceived {
             override fun getResponseBody(msg: String) {
                 val pxml = ParseElementXml()
