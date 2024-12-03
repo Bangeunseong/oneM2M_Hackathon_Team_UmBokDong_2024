@@ -28,6 +28,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kr.re.keti.mobiussampleapp_v25.App
 import kr.re.keti.mobiussampleapp_v25.R
 import kr.re.keti.mobiussampleapp_v25.data.ContentInstanceObject
 import kr.re.keti.mobiussampleapp_v25.database.RegisteredAEDatabase
@@ -154,7 +155,7 @@ class DeviceControlActivity: AppCompatActivity(), OnMapReadyCallback {
                     CameraUpdateFactory.newCameraPosition(
                         CameraPosition(
                             LatLng(location.first, location.second),
-                            12f,
+                            17f,
                             cameraPosition.tilt,
                             cameraPosition.bearing
                         )
@@ -166,7 +167,7 @@ class DeviceControlActivity: AppCompatActivity(), OnMapReadyCallback {
         // For retrieving resource content from room database
         CoroutineScope(Dispatchers.IO + job).launch{
             getDeviceStatus()
-            while(true){
+            while(true) {
                 getAnomalyDetection()
                 getGPSLocation()
                 delay(8000)
@@ -308,7 +309,7 @@ class DeviceControlActivity: AppCompatActivity(), OnMapReadyCallback {
 
             if(registeredAE.isTriggered) {
                 binding.mapView.getMapAsync {
-                    val location = mutableLocationData.value
+                    val location = App.detectedLocation
                     val marker = MarkerOptions()
                     if(location != null){
                         marker.position(LatLng(location.first, location.second))

@@ -63,7 +63,7 @@ class MainActivity : AppCompatActivity() {
     private var handler: Handler = Handler(Looper.myLooper()!!)
 
     private val MQTTPort = "1883"
-    private val Mobius_Address = "172.16.78.111"
+    private val Mobius_Address = "192.168.55.35"
 
     private val viewModel: MainViewModel by viewModels()
 
@@ -191,10 +191,10 @@ class MainActivity : AppCompatActivity() {
                 true
             }
             R.id.menu_refresh -> {
-                viewModel.getDeviceList().clear()
                 CoroutineScope(Dispatchers.IO).launch {
-                    val deviceList = viewModel.database.registeredAEDAO().getAll()
-                    viewModel.getDeviceList().addAll(deviceList)
+                    for(device in viewModel.getDeviceList()){
+                        updateDevice(device.applicationName, viewModel.getDeviceList().indexOf(device))
+                    }
                 }.invokeOnCompletion {
                     viewModel.refreshServiceAEList()
                 }
@@ -338,6 +338,54 @@ class MainActivity : AppCompatActivity() {
                 App.isConnected = true
                 startForegroundService(App.serviceIntent)
             }
+        }
+    }
+    /* Update device */
+    private suspend fun updateDevice(serviceAE: String, position: Int) = coroutineScope {
+        val reqLed = RetrieveRequest("DATA", serviceAE+"_led")
+        val reqPres = RetrieveRequest("DATA", serviceAE+"_pres")
+        val reqBuz = RetrieveRequest("DATA", serviceAE+"_buz")
+        val reqLock = RetrieveRequest("DATA", serviceAE+"_lock")
+
+        val updateDevice = viewModel.getDeviceList()[position]
+
+        reqLed.setReceiver(object : IReceived {
+            override fun getResponseBody(msg: String) {
+                val pxml = ParseElementXml()
+                updateDevice.isLedTurnedOn = pxml.GetElementXml(msg, "con") != "0"
+            }
+        })
+        reqPres.setReceiver(object : IReceived {
+            override fun getResponseBody(msg: String) {
+                val pxml = ParseElementXml()
+                updateDevice.isTriggered = pxml.GetElementXml(msg, "con") != "0"
+            }
+        })
+        reqBuz.setReceiver(object : IReceived {
+            override fun getResponseBody(msg: String) {
+                val pxml = ParseElementXml()
+                updateDevice.isBuzTurnedOn = pxml.GetElementXml(msg, "con") != "0"
+            }
+        })
+        reqLock.setReceiver(object : IReceived{
+            override fun getResponseBody(msg: String) {
+                val pxml = ParseElementXml()
+                updateDevice.isLocked = pxml.GetElementXml(msg, "con") != "0"
+            }
+        })
+
+        val updateData = async {
+            reqLed.start(); reqLed.join()
+            reqPres.start(); reqPres.join()
+            reqBuz.start(); reqBuz.join()
+            reqLock.start(); reqLock.join()
+        }
+
+        withContext(Dispatchers.Main){
+            updateData.await()
+            viewModel.getDeviceList()[position] = updateDevice
+            viewModel.updateServiceAE(position)
+            viewModel.database.registeredAEDAO().update(updateDevice)
         }
     }
     /* Unregister device */

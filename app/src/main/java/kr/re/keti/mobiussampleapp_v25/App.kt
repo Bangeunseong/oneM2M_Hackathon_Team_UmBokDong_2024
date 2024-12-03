@@ -23,6 +23,7 @@ class App: Application() {
 
     companion object {
         var serviceIntent: Intent? = null
+        var detectedLocation: Pair<Double, Double>? = null
         var isConnected = false
         const val CHANNEL_ID = "ANOMALY_DETECTION_SERVICE_CHANNEL"
     }
