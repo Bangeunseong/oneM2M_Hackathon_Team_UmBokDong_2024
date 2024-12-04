@@ -165,12 +165,12 @@ class DeviceControlActivity: AppCompatActivity(), OnMapReadyCallback {
         }
 
         // For retrieving resource content from room database
-        CoroutineScope(Dispatchers.IO + job).launch{
+        CoroutineScope(Dispatchers.IO + job).launch {
             getDeviceStatus()
             while(true) {
                 getAnomalyDetection()
                 getGPSLocation()
-                delay(8000)
+                delay(5000)
             }
         }
         setContentView(binding.root)
