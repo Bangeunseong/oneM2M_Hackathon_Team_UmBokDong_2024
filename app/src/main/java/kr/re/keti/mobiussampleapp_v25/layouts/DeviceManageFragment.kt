@@ -119,7 +119,7 @@ class DeviceManageFragment: Fragment() {
     /* Control Device Led Status when pressing led btn */
     private suspend fun controlDeviceLedStatus(device: RegisteredAE, position: Int) = coroutineScope{
         val controlLed = async {
-            val reqLed = ControlRequest(device.applicationName+"_led", "DATA", if(device.isLedTurnedOn) "0" else "1")
+            val reqLed = ControlRequest(device.applicationName+"_led", "COMMAND", if(device.isLedTurnedOn) "0" else "1")
             reqLed.setReceiver(object : IReceived{
                 override fun getResponseBody(msg: String) {
                     val pxml = ParseElementXml()
@@ -142,14 +142,13 @@ class DeviceManageFragment: Fragment() {
     /* Control Device Lock State when pressing lock btn */
     private suspend fun controlDeviceLockStatus(device: RegisteredAE, position: Int) = coroutineScope{
         val controlLock = async {
-            val reqLock = ControlRequest(device.applicationName+"_lock", "DATA", if(device.isLocked) "0" else "1")
+            val reqLock = ControlRequest(device.applicationName+"_lock", "COMMAND", if(device.isLocked) "0" else "1")
             reqLock.setReceiver(object : IReceived{
                 override fun getResponseBody(msg: String) {
                     val pxml = ParseElementXml()
                     device.isLocked = pxml.GetElementXml(msg, "con") != "0"
                     viewModel.getDeviceList()[position] = device
                     CoroutineScope(Dispatchers.IO).launch {
-
                         viewModel.database.registeredAEDAO().update(device)
                     }
                 }

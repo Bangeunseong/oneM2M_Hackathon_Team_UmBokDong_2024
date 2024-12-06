@@ -97,7 +97,7 @@ class DeviceControlActivity: AppCompatActivity(), OnMapReadyCallback {
             }
         }
         binding.ledSwitch.setOnCheckedChangeListener { _, isChecked ->
-            val req = ControlRequest(deviceAEName+"_led", "DATA", if (isChecked) "1" else "0")
+            val req = ControlRequest(deviceAEName+"_led", "COMMAND", if (isChecked) "1" else "0")
             req.setReceiver(object : IReceived {
                 override fun getResponseBody(msg: String) {
                     Log.d(TAG, "************** LED Light Control *************\r\n\r\n$msg")
@@ -113,7 +113,7 @@ class DeviceControlActivity: AppCompatActivity(), OnMapReadyCallback {
             req.start()
         }
         binding.lockSwitch.setOnCheckedChangeListener { _, isChecked ->
-            val req = ControlRequest(deviceAEName+"_lock", "DATA", if (isChecked) "1" else "0")
+            val req = ControlRequest(deviceAEName+"_lock", "COMMAND", if (isChecked) "1" else "0")
             req.setReceiver(object : IReceived {
                 override fun getResponseBody(msg: String) {
                     Log.d(TAG, "************** Lock Control *************\r\n\r\n$msg")
@@ -130,7 +130,7 @@ class DeviceControlActivity: AppCompatActivity(), OnMapReadyCallback {
             req.start()
         }
         binding.buzSwitch.setOnCheckedChangeListener { _, isChecked ->
-            val req = ControlRequest(deviceAEName+"_buz", "DATA", if (isChecked) "1" else "0")
+            val req = ControlRequest(deviceAEName+"_buz", "COMMAND", if (isChecked) "1" else "0")
             req.setReceiver(object : IReceived {
                 override fun getResponseBody(msg: String) {
                     Log.d(TAG, "************** Buzzer Control *************\r\n\r\n$msg")
